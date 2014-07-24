@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 ###############################################################################
 # filenav by dgelessus
-# http://github.com/dgelessus/filenav
+# http://github.com/dgelessus/pythonista-scripts/blob/master/filenav.py
 ###############################################################################
 
 import datetime # used to format timestamps from os.stat()
