@@ -27,6 +27,7 @@ import os        # to navigate the file structure
 import os.path   # ditto
 import PIL       # for thumbnail creation
 import PIL.Image # ditto
+import pwd       # to get names for UIDs
 import shutil    # to copy files
 import stat      # to analyze stat results
 import sys       # for sys.argv
@@ -51,7 +52,128 @@ if sys.argv[0] == "prompt":
 else:
     SCRIPT_ROOT = os.path.dirname(sys.argv[0])
 
-# dict of known file types and extensions
+# list of file size units
+SIZE_SUFFIXES = ["bytes", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB"]
+
+# dict of known file extensions
+FILE_EXTS = {
+             "aac":  "Apple Audio",
+             "aif":  "AIFF Audio",
+             "aiff": "AIFF Audio",
+             "app":  "Mac or iOS App Bundle",
+             "authors": "Author List",
+             "avi":  "AVI Video",
+             "bin":  "Binary Data",
+             "bmp":  "Microsoft Bitmap Image",
+             "build": "Build Instructions",
+             "bundle": "Bundle",
+             "bz2":  "Bzip2 Archive",
+             "c":    "C Source Code",
+             "cache": "Data Cache",
+             "caf":  "CAF Audio",
+             "cfg":  "Configuration File",
+             "changelog": "Changelog",
+             "changes": "Changelog",
+             "command": "Shell Script",
+             "conf": "Configuration File",
+             "contribs": "Contributor List",
+             "contributors": "Contributor List",
+             "copyright": "Copyright Notice",
+             "copyrights": "Copyright Notice",
+             "cpgz": "CPGZ Archive",
+             "cpp":  "C++ Source Code",
+             "css":  "Cascading Style Sheet",
+             "csv":  "Comma-separated Values",
+             "dat":  "Data",
+             "db":   "Database",
+             "dmg":  "Mac Disk Image",
+             "doc":  "MS Word Document",
+             "docx": "MS Word Document (XML-based)",
+             "dot":  "MS Word Template",
+             "dotx": "MS Word Template (XML-based)",
+             "exe":  "Windows Executable",
+             "fon":  "Bitmap Font",
+             "gif":  "GIF Image",
+             "git":  "Git Data",
+             "gitignore": "Git File Ignore List",
+             "gz":   "Gzip Archive",
+             "gzip": "Gzip Archive",
+             "h":    "C Header Source Code",
+             "hgignore": "Mercurial File Ignore List",
+             "hgsubstate": "Mercurial Substate",
+             "hgtags": "Mercurial Tags",
+             "hpp":  "C++ Header Source Code",
+             "htm":  "HTML File",
+             "html": "HTML File",
+             "icns": "Apple Icon Image",
+             "in":   "Configuration File",
+             "ini":  "MS INI File",
+             "install": "Install Instructions",
+             "installation": "Install Instructions",
+             "itunesartwork": "iOS App Logo",
+             "jpg":  "JPEG Image",
+             "jpeg": "JPEG Image",
+             "js":   "JavaScript",
+             "json": "JSON File",
+             "license": "License",
+             "m4a":  "MPEG-4 Audio",
+             "m4r":  "MPEG-4 Ringtone",
+             "m4v":  "MPEG-4 Video",
+             "makefile": "Makefile",
+             "md":   "Markdown Text",
+             "mov":  "Apple MOV Video",
+             "mp3":  "MPEG-3 Audio",
+             "mp4":  "MPEG-4 Video",
+             "nib":  "Mac or iOS Interface File",
+             "odf":  "ODF Document",
+             "odp":  "ODF Slideshow",
+             "ods":  "ODF Spreadsheet",
+             "odt":  "ODF Text",
+             "ogg":  "Ogg Vorbis Audio",
+             "otf":  "OpenType Font",
+             "pages": "Apple Pages Document",
+             "pdf":  "PDF Document",
+             "php":  "PHP Script",
+             "pkl":  "Python Pickle Data",
+             "plist": "Apple Property List",
+             "png":  "PNG Image",
+             "pps":  "MS PowerPoint Template",
+             "ppsx": "MS PowerPoint Template (XML-based)",
+             "ppt":  "MS PowerPoint Slideshow",
+             "pptx": "MS PowerPoint Slideshow (XML-based)",
+             "pxd":  "Pyrex Script",
+             "pxi":  "Pyrex Script",
+             "py":   "Python Script",
+             "pyc":  "Python Bytecode",
+             "pyo":  "Python Bytecode",
+             "pyx":  "Pyrex Script",
+             "pytheme": "Pythonista Code Theme",
+             "pyui": "Pythonista UI File",
+             "rar":  "RAR Archive",
+             "readme": "Read Me File",
+             "rst":  "reStructured Text",
+             "rtf":  "RTF Document",
+             "sh":   "Shell Script",
+             "src":  "Source Code",
+             "svg":  "Scalable Vector Graphic",
+             "tar":  "Tar Archive",
+             "tgz":  "Tar Ball",
+             "ttc":  "TrueType Font Collection",
+             "ttf":  "TrueType Font",
+             "txt":  "Plain Text",
+             "version": "Version Details",
+             "xls":  "MS Excel Spreadsheet",
+             "xlsx": "MS Excel Spreadsheet (XML-based)",
+             "xlt":  "MS Excel Template",
+             "xltx": "MS Excel Template (XML-based)",
+             "xml":  "XML File",
+             "yml":  "YML File",
+             "wav":  "Waveform Audio",
+             "z":    "Compressed Archive",
+             "zip":  "Zip Archive",
+             }
+
+# dict of known file type groups and extensions
 FILE_TYPES = {
               "app":       ("app", "exe", "nib", "pytheme", "pyui"),
               "archive":   ("bundle", "bz2", "cpgz", "dmg", "gz", "gzip", "rar", "tar", "tgz", "z", "zip"),
@@ -61,9 +183,26 @@ FILE_TYPES = {
               "data":      ("bin", "cache", "dat", "db", "pkl", "pyc", "pyo"),
               "font":      ("fon", "otf", "ttc", "ttf"),
               "git":       ("git", "gitignore"),
-              "image":     ("bmp", "gif", "icns", "itunesartwork", "jpg", "jpeg", "png"),
-              "text":      ("authors", "build", "cfg", "changelog", "changes", "clslog", "contribs", "contributors", "copyright", "copyrights", "csv", "doc", "docx", "dot", "dotx", "hgignore", "hgsubstate", "hgtags", "in", "ini", "install", "installation", "license", "md", "odf", "odt", "pages", "pdf", "readme", "rst", "rtf", "txt", "version", "yml"),
+              "image":     ("bmp", "gif", "icns", "itunesartwork", "jpg", "jpeg", "png", "svg"),
+              "text":      ("authors", "build", "cfg", "changelog", "changes", "clslog", "conf", "contribs", "contributors", "copyright", "copyrights", "csv", "doc", "docx", "dot", "dotx", "hgignore", "hgsubstate", "hgtags", "in", "ini", "install", "installation", "license", "md", "odf", "odp", "ods", "odt", "pages", "pdf", "pps", "ppsx", "ppt", "pptx", "readme", "rst", "rtf", "txt", "version", "xls", "xlsx", "xlt", "xltx", "yml"),
               "video":     ("avi", "m4v", "mov", "mp4"),
+              }
+
+# dict of descriptions for all file type groups
+FILE_DESCS = {
+              "app":       "Application",
+              "archive":   "Archive",
+              "audio":     "Audio File",
+              "code":      "Source Code",
+              "code_tags": "Source Code",
+              "data":      "Data File",
+              "file":      "File",
+              "folder":    "Folder",
+              "font":      "Font File",
+              "git":       None,
+              "image":     "Image File",
+              "text":      "Plain Text File",
+              "video":     "Video File",
               }
 
 # dict of all file type icons
@@ -86,6 +225,35 @@ FILE_ICONS = {
               "video":     ui.Image.named("ionicons-ios7-film-outline-32"),
               }
 
+def get_thumbnail(path):
+    # attempt to generate a thumbnail
+    try:
+        thumb = PIL.Image.open(path)
+        thumb.thumbnail((32, 32), PIL.Image.ANTIALIAS)
+        #print(path + str(thumb.format))
+        strio = StringIO.StringIO()
+        thumb.save(strio, thumb.format)
+        data = strio.getvalue()
+        strio.close()
+        return ui.Image.from_data(data)
+    except IOError as err:
+        if err.message == "broken data stream when reading image file":
+            # load image using ui module first
+            with open(os.path.join(SCRIPT_ROOT, "temp/filenav-tmp.png"), "wb") as f:
+                f.write(ui.Image.named(path).to_png())
+            # need to close and reopen file, otherwise PIL fails to read the image
+            with open(os.path.join(SCRIPT_ROOT, "temp/filenav-tmp.png"), "rb") as f:
+                thumb = PIL.Image.open(f)
+                thumb.thumbnail((32, 32), PIL.Image.ANTIALIAS)
+                #print(path + str(thumb.format))
+                strio = StringIO.StringIO()
+                thumb.save(strio, thumb.format)
+            data = strio.getvalue()
+            strio.close()
+            return ui.Image.from_data(data)
+        return None
+        #print(err)
+
 class FileItem(object):
     # object representation of a file and its properties
     def __init__(self, path):
@@ -99,12 +267,18 @@ class FileItem(object):
         self.rel_to_docs = rel_to_docs(self.path)
         self.location, self.name = os.path.split(self.path)
         self.nameparts = self.name.rsplit(".")
-        self.stat = os.stat(self.path)
+        try:
+            self.stat = os.stat(self.path)
+        except OSError as err:
+            self.stat = err
         
         if os.path.isdir(self.path):
             self.basetype = 0
             self.filetype = "folder"
-            self.contents = os.listdir(self.path)
+            try:
+                self.contents = os.listdir(self.path)
+            except OSError as err:
+                self.contents = err
         else:
             self.basetype = 1
             self.filetype = "file"
@@ -114,6 +288,21 @@ class FileItem(object):
             for type in FILE_TYPES:
                 if part.lower() in FILE_TYPES[type]:
                     self.filetype = type
+        
+        self.icon = None
+    
+    def __del__(self):
+        #print("uncaching " + self.path)
+        del self.path
+        del self.rel_to_docs
+        del self.location
+        del self.name
+        del self.nameparts
+        del self.stat
+        del self.basetype
+        del self.filetype
+        del self.contents
+        del self.icon
     
     def __repr__(self):
         # repr(self) and str(self)
@@ -194,39 +383,68 @@ class FileItem(object):
     
     def as_cell(self):
         # Create a ui.TableViewCell for use with FileDataSource
-        cell = ui.TableViewCell()
+        cell = ui.TableViewCell("subtitle")
         cell.text_label.text = self.name
         
         if self.basetype == 0:
             # is a folder
             cell.accessory_type = "detail_disclosure_button"
+            cell.detail_text_label.text = "Folder"
+            
+            # only apply certain descriptions to folders
+            if self.filetype in ("app", "bundle", "git"):
+                try:
+                    cell.detail_text_label.text = FILE_EXTS[self.nameparts[len(self.nameparts)-1].lower()]
+                except KeyError:
+                    try:
+                        cell.detail_text_label.text = FILE_DESCS[self.filetype]
+                    except KeyError:
+                        pass
+            
+            if self.icon is None:
+                cell.image_view.image = FILE_ICONS["folder"]
+                # only apply certain icons to folders
+                if self.filetype in ("app", "archive", "bundle", "git"):
+                    cell.image_view.image = FILE_ICONS[self.filetype]
+            
         else:
             # is a file
             cell.accessory_type = "detail_button"
-        
-        cell.image_view.image = FILE_ICONS[self.filetype]
-        
-        if self.filetype == "image":
-            # attempt to generate a thumbnail
+            cell.detail_text_label.text = "File"
+            
             try:
-                thumb = PIL.Image.open(self.path)
-                thumb.thumbnail((32, 32), PIL.Image.ANTIALIAS)
-                #print(path + str(thmb.format))
-                strio = StringIO.StringIO()
-                thumb.save(strio, thumb.format)
-                cell.image_view.image = ui.Image.from_data(strio.getvalue())
-                strio.close()
-            except IOError as err:
-                pass
-                #print(err)
+                cell.detail_text_label.text = FILE_EXTS[self.nameparts[len(self.nameparts)-1].lower()]
+            except KeyError:
+                try:
+                    cell.detail_text_label.text = FILE_DESCS[self.filetype]
+                except KeyError:
+                    pass
+            
+            if self.icon is None:
+                cell.image_view.image = FILE_ICONS[self.filetype]
+                if self.filetype == "image":
+                    thumb = get_thumbnail(self.path)
+                    if thumb is not None:
+                        cell.image_view.image = thumb
+        
+        if self.icon is None:
+            self.icon = cell.image_view.image
+        else:
+            cell.image_view.image = self.icon
+        
+        # add size to subtitle
+        if not isinstance(self.stat, OSError):
+            cell.detail_text_label.text += " (" + format_size(self.stat.st_size, False) + ")"
         
         return cell
 
+CWD_FILE_ITEM = FileItem(os.getcwd())
+
 class FileDataSource(object):
     # ui.TableView data source that generates a directory listing
-    def __init__(self, path=os.getcwd()):
+    def __init__(self, fi=CWD_FILE_ITEM):
         # init
-        self.path = full_path(path)
+        self.fi = fi
         self.refresh()
         self.lists = [self.folders, self.files]
 
@@ -234,11 +452,15 @@ class FileDataSource(object):
         # Refresh the list of files and folders
         self.folders = []
         self.files = []
-        for f in os.listdir(self.path):
-            if os.path.isdir(os.path.join(self.path, f)):
-                self.folders += f,
+        for i in range(len(self.fi.contents)):
+            if not isinstance(self.fi.contents[i], FileItem):
+                # if it isn't already, make entries FileItems rather than strings
+                self.fi.contents[i] = FileItem(self.fi.join(self.fi.contents[i]))
+            
+            if self.fi.contents[i].isdir():
+                self.folders.append(self.fi.contents[i])
             else:
-                self.files += f,
+                self.files.append(self.fi.contents[i])
 
     def tableview_number_of_sections(self, tableview):
         # Return the number of sections
@@ -250,42 +472,7 @@ class FileDataSource(object):
 
     def tableview_cell_for_row(self, tableview, section, row):
         # Create and return a cell for the given section/row
-        fi = FileItem(os.path.join(self.path, self.lists[section][row]))
-        return fi.as_cell()
-        """ # old code without FileItem
-        cell = ui.TableViewCell()
-        path = os.path.join(self.path, self.lists[section][row])
-        name = os.path.basename(path)
-        cell.text_label.text = name
-        exts = name.rsplit(".") # the name itself is supposed to be kept, for detection of files like README
-        if section == 0:
-            cell.accessory_type = "detail_disclosure_button"
-            cell.image_view.image = FILE_ICONS["folder"]
-        elif section == 1:
-            cell.accessory_type = "detail_button"
-            cell.image_view.image = FILE_ICONS["file"]
-        
-        thumb_created = False
-        for ext in exts:
-            for type in FILE_TYPES:
-                if ext.lower() in FILE_TYPES[type]:
-                    cell.image_view.image = FILE_ICONS[type]
-                    if type == "image" and not thumb_created:
-                        # attempt to generate a thumbnail
-                        try:
-                            thumb_created = True
-                            thmb = PIL.Image.open(path)
-                            thmb.thumbnail((32, 32), PIL.Image.ANTIALIAS)
-                            #print(path + str(thmb.format))
-                            strio = StringIO.StringIO()
-                            thmb.save(strio, thmb.format)
-                            cell.image_view.image = ui.Image.from_data(strio.getvalue())
-                            strio.close()
-                        except IOError as err:
-                            pass
-                            #print(err)
-        return cell
-        #"""
+        return self.lists[section][row].as_cell()
 
     def tableview_title_for_header(self, tableview, section):
         # Return a title for the given section.
@@ -316,95 +503,130 @@ class FileDataSource(object):
         # Called when the user selects a row
         if not tableview.editing:
             if section == 0:
-                nav.push_view(make_file_list(os.path.join(self.path, self.folders[row])))
+                nav.push_view(make_file_list(self.lists[section][row]))
             elif section == 1:
-                open_path(os.path.join(self.path, self.files[row]))
+                open_path(self.lists[section][row].path)
                 nav.close()
     
     def tableview_accessory_button_tapped(self, tableview, section, row):
         # Called when the user taps a row's accessory (i) button
-        nav.push_view(make_stat_view(os.path.join(self.path, self.lists[section][row])))
+        nav.push_view(make_stat_view(self.lists[section][row]))
 
 class StatDataSource(object):
     # ui.TableView data source that shows os.stat() data on a file
-    def __init__(self, path=os.getcwd()):
+    def __init__(self, fi=CWD_FILE_ITEM):
         # init
-        self.path = full_path(path)
+        self.fi = fi
         self.refresh()
         self.lists = [self.actions, self.stats, self.flags]
+        self.list_details = [self.action_details, self.stat_details, self.flag_details]
         self.list_imgs = [self.action_imgs, self.stat_imgs, self.flag_imgs]
 
     def refresh(self):
         # Refresh stat data
-        if os.path.isdir(self.path):
-            self.type = 0
-        else:
-            self.type = 1
         self.actions = []
+        self.action_details = []
         self.action_imgs = []
         self.stats = []
+        self.stat_details = []
         self.stat_imgs = []
         self.flags = []
+        self.flag_details = []
         self.flag_imgs = []
-        stres = os.stat(self.path)
+        stres = self.fi.stat
         
-        if self.type == 0:
+        if self.fi.isdir():
             # actions for folders
-            self.actions.append("Go here in Shellista")
+            self.actions.append("Go here")
+            self.action_details.append("Shellista")
             self.action_imgs.append(ui.Image.named("ionicons-ios7-arrow-forward-32"))
-        elif self.type == 1:
+        elif self.fi.isfile():
             # actions for files
-            self.actions.append("Quick Look")
+            self.actions.append("Preview")
+            self.action_details.append("Quick Look")
             self.action_imgs.append(ui.Image.named("ionicons-ios7-eye-32"))
             self.actions.append("Open in Editor")
+            self.action_details.append("Pythonista")
             self.action_imgs.append(ui.Image.named("ionicons-ios7-compose-32"))
             self.actions.append("Copy & Open")
+            self.action_details.append("Pythonista")
             self.action_imgs.append(ui.Image.named("ionicons-ios7-copy-32"))
             self.actions.append("Copy & Open as Text")
+            self.action_details.append("Pythonista")
             self.action_imgs.append(ui.Image.named("ionicons-document-text-32"))
             # haven't yet been able to integrate hexviewer
             #self.actions.append("Open in Hex Viewer")
+            #self.action_details.append("hexviewer")
             #self.action_imgs.append(ui.Image.named("ionicons-pound-32"))
-            self.actions.append("Open in External App")
+            self.actions.append("Open in and Share")
+            self.action_details.append("External Apps")
             self.action_imgs.append(ui.Image.named("ionicons-ios7-paperplane-32"))
         
         # general statistics
-        self.stats.append("Size: " + str(stres.st_size) + " bytes")
+        self.stats.append("Size")
+        self.stat_details.append(format_size(stres.st_size))
         self.stat_imgs.append(ui.Image.named("ionicons-code-working-32"))
-        self.stats.append("C: " + str(datetime.datetime.utcfromtimestamp(stres.st_ctime)) + " UTC")
+        self.stats.append("Created")
+        self.stat_details.append(str(datetime.datetime.utcfromtimestamp(stres.st_ctime)) + " UTC")
         self.stat_imgs.append(ui.Image.named("ionicons-document-32"))
-        self.stats.append("O: " + str(datetime.datetime.utcfromtimestamp(stres.st_atime)) + " UTC")
+        self.stats.append("Opened")
+        self.stat_details.append(str(datetime.datetime.utcfromtimestamp(stres.st_atime)) + " UTC")
         self.stat_imgs.append(ui.Image.named("ionicons-folder-32"))
-        self.stats.append("M: " + str(datetime.datetime.utcfromtimestamp(stres.st_mtime)) + " UTC")
+        self.stats.append("Modified")
+        self.stat_details.append(str(datetime.datetime.utcfromtimestamp(stres.st_mtime)) + " UTC")
         self.stat_imgs.append(ui.Image.named("ionicons-ios7-compose-32"))
-        self.stats.append("Owner: " + str(stres.st_uid))
+        self.stats.append("Owner")
+        self.stat_details.append("{udesc} ({uid}={uname})".format(uid=stres.st_uid, uname=pwd.getpwuid(stres.st_uid)[0], udesc=pwd.getpwuid(stres.st_uid)[4]))
         self.stat_imgs.append(ui.Image.named("ionicons-ios7-person-32"))
-        self.stats.append("Owner Group: " + str(stres.st_gid))
+        self.stats.append("Owner Group")
+        self.stat_details.append(str(stres.st_gid))
         self.stat_imgs.append(ui.Image.named("ionicons-ios7-people-32"))
-        self.stats.append("Flags: " + str(bin(stres.st_mode)))
+        self.stats.append("Flags")
+        self.stat_details.append(str(bin(stres.st_mode)))
         self.stat_imgs.append(ui.Image.named("ionicons-ios7-flag-32"))
+        #self.stat_details += ["Detail"] * len(self.stats)
         
         flint = stres.st_mode
         
-        self.flags.append("Is Socket: " + str(stat.S_ISSOCK(flint)))
-        self.flags.append("Is Symlink: " + str(stat.S_ISLNK(flint)))
-        self.flags.append("Is Regular File: " + str(stat.S_ISREG(flint)))
-        self.flags.append("Is Block Device: " + str(stat.S_ISBLK(flint)))
-        self.flags.append("Is Directory: " + str(stat.S_ISDIR(flint)))
-        self.flags.append("Is Char Device: " + str(stat.S_ISCHR(flint)))
-        self.flags.append("Is FIFO: " + str(stat.S_ISFIFO(flint)))
-        self.flags.append("Set UID Bit: " + str(check_bit(flint, stat.S_ISUID)))
-        self.flags.append("Set GID Bit: " + str(check_bit(flint, stat.S_ISGID)))
-        self.flags.append("Sticky Bit: " + str(check_bit(flint, stat.S_ISVTX)))
-        self.flags.append("May Owner Read: " + str(check_bit(flint, stat.S_IRUSR)))
-        self.flags.append("May Owner Write: " + str(check_bit(flint, stat.S_IWUSR)))
-        self.flags.append("May Owner Exec: " + str(check_bit(flint, stat.S_IXUSR)))
-        self.flags.append("May Group Read: " + str(check_bit(flint, stat.S_IRGRP)))
-        self.flags.append("May Group Write: " + str(check_bit(flint, stat.S_IWGRP)))
-        self.flags.append("May Group Exec: " + str(check_bit(flint, stat.S_IXGRP)))
-        self.flags.append("May Others Read: " + str(check_bit(flint, stat.S_IROTH)))
-        self.flags.append("May Others Write: " + str(check_bit(flint, stat.S_IWOTH)))
-        self.flags.append("May Others Exec: " + str(check_bit(flint, stat.S_IXOTH)))
+        self.flags.append("Is Socket")
+        self.flag_details.append(str(stat.S_ISSOCK(flint)))
+        self.flags.append("Is Symlink")
+        self.flag_details.append(str(stat.S_ISLNK(flint)))
+        self.flags.append("Is File")
+        self.flag_details.append(str(stat.S_ISREG(flint)))
+        self.flags.append("Is Block Dev.")
+        self.flag_details.append(str(stat.S_ISBLK(flint)))
+        self.flags.append("Is Directory")
+        self.flag_details.append(str(stat.S_ISDIR(flint)))
+        self.flags.append("Is Char Dev.")
+        self.flag_details.append(str(stat.S_ISCHR(flint)))
+        self.flags.append("Is FIFO")
+        self.flag_details.append(str(stat.S_ISFIFO(flint)))
+        self.flags.append("Set UID Bit")
+        self.flag_details.append(str(check_bit(flint, stat.S_ISUID)))
+        self.flags.append("Set GID Bit")
+        self.flag_details.append(str(check_bit(flint, stat.S_ISGID)))
+        self.flags.append("Sticky Bit")
+        self.flag_details.append(str(check_bit(flint, stat.S_ISVTX)))
+        self.flags.append("Owner Read")
+        self.flag_details.append(str(check_bit(flint, stat.S_IRUSR)))
+        self.flags.append("Owner Write")
+        self.flag_details.append(str(check_bit(flint, stat.S_IWUSR)))
+        self.flags.append("Owner Exec")
+        self.flag_details.append(str(check_bit(flint, stat.S_IXUSR)))
+        self.flags.append("Group Read")
+        self.flag_details.append(str(check_bit(flint, stat.S_IRGRP)))
+        self.flags.append("Group Write")
+        self.flag_details.append(str(check_bit(flint, stat.S_IWGRP)))
+        self.flags.append("Group Exec")
+        self.flag_details.append(str(check_bit(flint, stat.S_IXGRP)))
+        self.flags.append("Others Read")
+        self.flag_details.append(str(check_bit(flint, stat.S_IROTH)))
+        self.flags.append("Others Write")
+        self.flag_details.append(str(check_bit(flint, stat.S_IWOTH)))
+        self.flags.append("Others Exec")
+        self.flag_details.append(str(check_bit(flint, stat.S_IXOTH)))
+        #self.flag_details += ["Detail"] * len(self.flags)
         self.flag_imgs += [ui.Image.named("ionicons-ios7-flag-32")] * len(self.flags)
     
     def tableview_number_of_sections(self, tableview):
@@ -417,9 +639,13 @@ class StatDataSource(object):
 
     def tableview_cell_for_row(self, tableview, section, row):
         # Create and return a cell for the given section/row
-        cell = ui.TableViewCell()
+        if section == 0:
+            cell = ui.TableViewCell("subtitle")
+            cell.image_view.image = self.list_imgs[section][row]
+        else:
+            cell = ui.TableViewCell("value2")
         cell.text_label.text = self.lists[section][row]
-        cell.image_view.image = self.list_imgs[section][row]
+        cell.detail_text_label.text = self.list_details[section][row]
         return cell
 
     def tableview_title_for_header(self, tableview, section):
@@ -468,8 +694,8 @@ class StatDataSource(object):
                         return
                     shell = Shell()
                     shell.prompt = '> '
-                    shell.onecmd("cd " + self.path)
-                    print("> cd " + self.path)
+                    shell.onecmd("cd " + self.fi.path)
+                    print("> cd " + self.fi.path)
                     shell.cmdloop()
             elif self.type == 1:
                 # actions for files
@@ -477,17 +703,17 @@ class StatDataSource(object):
                     # Quick Look
                     nav.close()
                     time.sleep(1) # ui thread will hang otherwise
-                    console.quicklook(self.path)
+                    console.quicklook(self.fi.path)
                 elif row == 1:
                     # Open in Editor
-                    open_path(self.path)
+                    open_path(self.fi.path)
                     nav.close()
                 elif row == 2:
                     # Copy & Open
                     destdir = full_path(os.path.join(SCRIPT_ROOT, "temp"))
                     if not os.path.exists(destdir):
                         os.mkdir(destdir)
-                    destfile = full_path(os.path.join(destdir, os.path.basename(self.path).lstrip(".")))
+                    destfile = full_path(os.path.join(destdir, self.fi.basename().lstrip(".")))
                     shutil.copy(self.path, destfile)
                     editor.reload_files()
                     open_path(destfile)
@@ -497,7 +723,7 @@ class StatDataSource(object):
                     destdir = full_path(os.path.join(SCRIPT_ROOT, "temp"))
                     if not os.path.exists(destdir):
                         os.mkdir(destdir)
-                    destfile = full_path(os.path.join(destdir, os.path.basename(self.path).lstrip(".") + ".txt"))
+                    destfile = full_path(os.path.join(destdir, self.fi.basename().lstrip(".") + ".txt"))
                     shutil.copy(self.path, destfile)
                     editor.reload_files()
                     open_path(destfile)
@@ -516,6 +742,21 @@ class StatDataSource(object):
 def check_bit(num, bit):
     # Check if bit is set in num
     return (num ^ bit) < num
+
+def format_size(size, long=True):
+    if size < 1024:
+        return str(int(size)) + " bytes"
+    else:
+        bsize = int(size)
+        size = float(size)
+        i = 0
+        while size >= 1024.0 and i < len(SIZE_SUFFIXES)-1:
+            size = size/1024.0
+            i += 1
+        if long:
+            return "{size:02.2f} {suffix} ({bsize} bytes)".format(size=size, suffix=SIZE_SUFFIXES[i], bsize=bsize)
+        else:
+            return "{size:01.1f} {suffix}".format(size=size, suffix=SIZE_SUFFIXES[i])
 
 def open_path(path):
     # Open an absolute path in editor
@@ -539,10 +780,9 @@ def close_proxy():
         #wrap.close()
     return _close
 
-def make_file_list(path):
+def make_file_list(fi=CWD_FILE_ITEM):
     # Create a ui.TableView containing a directory listing of path
-    path = full_path(path)
-    ds = FileDataSource(path)
+    ds = FileDataSource(fi)
     lst = ui.TableView(flex="WH")
     # allow multiple selection when editing, single selection otherwise
     lst.allows_selection = True
@@ -552,15 +792,16 @@ def make_file_list(path):
     lst.background_color = 1.0
     lst.data_source = ds
     lst.delegate = ds
-    lst.name = os.path.basename(path)
+    if fi.path == "/":
+        lst.name = "/"
+    else:
+        lst.name = fi.basename()
     lst.right_button_items = ui.ButtonItem(title="Edit", action=toggle_edit_proxy(lst)),
-    current_list = lst
     return lst
 
-def make_stat_view(path):
+def make_stat_view(fi=CWD_FILE_ITEM):
     # Create a ui.TableView containing stat data on path
-    path = full_path(path)
-    ds = StatDataSource(path)
+    ds = StatDataSource(fi)
     lst = ui.TableView(flex="WH")
     # allow single selection only outside edit mode
     lst.allows_selection = True
@@ -570,19 +811,21 @@ def make_stat_view(path):
     lst.background_color = 1.0
     lst.data_source = ds
     lst.delegate = ds
-    lst.name = os.path.basename(path)
+    if fi.path == "/":
+        lst.name = "/"
+    else:
+        lst.name = fi.basename()
     return lst
 
 def run(path="~"):
     # Run the main UI application
-    global lst
-    global current_list
     global nav
     
-    lst = make_file_list(path)
+    if full_path(path) == "~":
+        lst = make_file_list(CWD_FILE_ITEM)
+    else:
+        lst = make_file_list(FileItem(path))
     lst.left_button_items = ui.ButtonItem(image=ui.Image.named("ionicons-close-24"), action=close_proxy()),
-    
-    current_list = lst
 
     nav = ui.NavigationView(lst)
     nav.navigation_bar_hidden = False
