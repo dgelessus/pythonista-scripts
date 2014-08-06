@@ -679,7 +679,7 @@ class StatDataSource(object):
     def tableview_did_select(self, tableview, section, row):
         # Called when the user selects a row
         if section == 0:
-            if self.type == 0:
+            if self.fi.isdir():
                 # actions for folders
                 if row == 0:
                     # Go Here in Shellista
@@ -697,7 +697,7 @@ class StatDataSource(object):
                     shell.onecmd("cd " + self.fi.path)
                     print("> cd " + self.fi.path)
                     shell.cmdloop()
-            elif self.type == 1:
+            elif self.fi.isfile():
                 # actions for files
                 if row == 0:
                     # Quick Look
