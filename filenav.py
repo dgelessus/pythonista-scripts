@@ -26,7 +26,7 @@ import errno     # for OSError codes
 import os        # to navigate the file structure
 #import os.path   # ditto  # if you import os, you do not need to also import os.path
 import PIL       # for thumbnail creation
-#import PIL.Image # ditto  # if you import PIL, you do not need to also import PIL.Image
+import PIL.Image # ditto
 import pwd       # to get names for UIDs
 import shutil    # to copy files
 import stat      # to analyze stat results
