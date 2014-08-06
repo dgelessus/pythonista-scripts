@@ -51,7 +51,7 @@ def rel_to_docs(path):
 SCRIPT_ROOT = full_path("~") if sys.argv[0] == "prompt" else os.path.dirname(sys.argv[0])
 
 # list of file size units
-SIZE_SUFFIXES = ["bytes", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB"]
+SIZE_SUFFIXES = "bytes KiB MiB GiB TiB PiB EiB ZiB YiB".split()
 
 # dict of known file extensions
 FILE_EXTS = {
@@ -183,7 +183,8 @@ FILE_TYPES = {
               "font":      ("fon", "otf", "ttc", "ttf"),
               "git":       ("git", "gitignore"),
               "image":     ("bmp", "gif", "icns", "itunesartwork", "jpg", "jpeg", "png", "svg"),
-              "text":      ("authors", "build", "cfg", "changelog", "changes", "clslog", "conf", "contribs", "contributors", "copyright", "copyrights", "csv", "doc", "docx", "dot", "dotx",
+              "text":      ("authors", "build", "cfg", "changelog", "changes", "clslog", "conf", "contribs",
+                            "contributors", "copyright", "copyrights", "csv", "doc", "docx", "dot", "dotx",
                             "hgignore", "hgsubstate", "hgtags", "in", "ini", "install", "installation",
                             "license", "md", "odf", "odp", "ods", "odt", "pages", "pdf", "pps", "ppsx",
                             "ppt", "pptx", "readme", "rst", "rtf", "txt", "version", "xls", "xlsx", "xlt",
