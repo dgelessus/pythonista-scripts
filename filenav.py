@@ -384,7 +384,7 @@ class FileItem(object):
         cell = ui.TableViewCell("subtitle")
         cell.text_label.text = self.name
         
-        if self.basetype == 0:
+        if self.isdir():
             # is a folder
             cell.accessory_type = "detail_disclosure_button"
             cell.detail_text_label.text = "Folder"
