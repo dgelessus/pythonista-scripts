@@ -728,7 +728,7 @@ class StatDataSource(object):
                     nav.close()
                 elif row == 4:
                     # Open In
-                    if console.open_in(self.path):
+                    if console.open_in(self.fi.path):
                         nav.close()
                     else:
                         console.hud_alert("Failed to Open", "error")
