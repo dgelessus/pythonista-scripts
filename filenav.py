@@ -745,8 +745,7 @@ def format_size(size, long=True):
     if size < 1024:
         return str(int(size)) + " bytes"
     else:
-        bsize = int(size)
-        size = float(size)
+        size, bsize = float(size), int(size)
         i = 0
         while size >= 1024.0 and i < len(SIZE_SUFFIXES)-1:
             size = size/1024.0
@@ -784,8 +783,7 @@ def make_file_list(fi=CWD_FILE_ITEM):
     lst.allows_selection_during_editing = True
     lst.allows_multiple_selection_during_editing = True
     lst.background_color = 1.0
-    lst.data_source = ds
-    lst.delegate = ds
+    lst.data_source = lst.delegate = ds
     
     lst.name = "/" if fi.path == "/" else fi.basename()
     lst.right_button_items = ui.ButtonItem(title="Edit", action=toggle_edit_proxy(lst)),
