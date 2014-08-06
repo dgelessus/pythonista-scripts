@@ -799,8 +799,7 @@ def make_stat_view(fi=CWD_FILE_ITEM):
     lst.allows_selection_during_editing = False
     lst.allows_multiple_selection_during_editing = False
     lst.background_color = 1.0
-    lst.data_source = ds
-    lst.delegate = ds
+    lst.data_source = lst.delegate = ds
     lst.name = "/" if fi.path == "/" else fi.basename()
     return lst
 
