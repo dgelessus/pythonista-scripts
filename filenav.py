@@ -314,17 +314,11 @@ class FileItem(object):
     
     def __eq__(self, other):
         # self == other
-        if isinstance(other, FileItem):
-            return os.path.samefile(self.path, other.path)
-        else:
-            return False
-    
+        return os.path.samefile(self.path, other.path) if isinstance(other, FileItem) else False
+
     def __ne__(self, other):
         # self != other
-        if isinstance(other, FileItem):
-            return not os.path.samefile(self.path, other.path)
-        else:
-            return False
+        return not os.path.samefile(self.path, other.path) if isinstance(other, FileItem) else False
     
     def __len__(self):
         # len(self)
@@ -405,7 +399,7 @@ class FileItem(object):
                     except KeyError:
                         pass
             
-            if self.icon is None:
+            if not self.icon:
                 cell.image_view.image = FILE_ICONS["folder"]
                 # only apply certain icons to folders
                 if self.filetype in ("app", "archive", "bundle", "git"):
@@ -424,11 +418,11 @@ class FileItem(object):
                 except KeyError:
                     pass
             
-            if self.icon is None:
+            if not self.icon:
                 cell.image_view.image = FILE_ICONS[self.filetype]
                 if self.filetype == "image":
                     thumb = get_thumbnail(self.path)
-                    if thumb is not None:
+                    if thumb:
                         cell.image_view.image = thumb
         
         if self.icon:
