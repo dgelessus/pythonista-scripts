@@ -173,24 +173,24 @@ FILE_EXTS = {
 
 # dict of known file type groups and extensions
 FILE_TYPES = {
-              "app":       ("app", "exe", "nib", "pytheme", "pyui"),
-              "archive":   ("bundle", "bz2", "cpgz", "dmg", "gz", "gzip", "rar", "tar", "tgz", "z", "zip"),
-              "audio":     ("aac", "aif", "aiff", "caf", "m4a", "m4r", "mp3", "ogg", "wav"),
-              "code":      ("c", "command", "cpp", "css", "h", "hpp", "js", "json", "makefile", "pxd",
-                            "pxi", "py", "pyx", "sh", "src"),
-              "code_tags": ("htm", "html", "php", "plist", "xml"),
-              "data":      ("bin", "cache", "dat", "db", "pkl", "pyc", "pyo"),
-              "font":      ("fon", "otf", "ttc", "ttf"),
-              "git":       ("git", "gitignore"),
-              "image":     ("bmp", "gif", "icns", "itunesartwork", "jpg", "jpeg", "png", "svg"),
-              "text":      ("authors", "build", "cfg", "changelog", "changes", "clslog", "conf", "contribs",
-                            "contributors", "copyright", "copyrights", "csv", "doc", "docx", "dot", "dotx",
-                            "hgignore", "hgsubstate", "hgtags", "in", "ini", "install", "installation",
-                            "license", "md", "odf", "odp", "ods", "odt", "pages", "pdf", "pps", "ppsx",
-                            "ppt", "pptx", "readme", "rst", "rtf", "txt", "version", "xls", "xlsx", "xlt",
-                            "xltx", "yml"),
-              "video":     ("avi", "m4v", "mov", "mp4"),
+    "app":       "app exe nib pytheme pyui",
+    "archive":   "bundle bz2 cpgz dmg gz gzip rar tar tgz z zip",
+    "audio":     "aac aif aiff caf m4a m4r mp3 ogg wav",
+    "code":      """c command cpp css h hpp js json makefile pxd pxi py pyx
+                    sh src""",
+    "code_tags": "htm html php plist xml",
+    "data":      "bin cache dat db pkl pyc pyo",
+    "font":      "fon otf ttc ttf",
+    "git":       "git gitignore",
+    "image":     "bmp gif icns itunesartwork jpg jpeg png svg",
+    "text":      """authors build cfg changelog changes clslog conf contribs
+                    contributors copyright copyrights csv doc docx dot dotx
+                    hgignore hgsubstate hgtags in ini install installation
+                    license md odf odp ods odt pages pdf pps ppsx ppt pptx
+                    readme rst rtf txt version xls xlsx xlt xltx yml""",
+    "video":     "avi m4v mov mp4"
               }
+FILE_TYPES = {k:tuple(v.split()) for k,v in FILE_TYPES.iteritems()}
 
 # dict of descriptions for all file type groups
 FILE_DESCS = {
