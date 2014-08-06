@@ -24,9 +24,9 @@ import datetime  # to format timestamps from os.stat()
 import editor    # to open files
 import errno     # for OSError codes
 import os        # to navigate the file structure
-import os.path   # ditto
+#import os.path   # ditto  # if you import os, you do not need to also import os.path
 import PIL       # for thumbnail creation
-import PIL.Image # ditto
+#import PIL.Image # ditto  # if you import PIL, you do not need to also import PIL.Image
 import pwd       # to get names for UIDs
 import shutil    # to copy files
 import stat      # to analyze stat results
@@ -47,10 +47,8 @@ def rel_to_docs(path):
     return os.path.relpath(full_path(path), os.path.expanduser("~/Documents"))
 
 # get location of current script, fall back to ~ if necessary
-if sys.argv[0] == "prompt":
-    SCRIPT_ROOT = full_path("~")
-else:
-    SCRIPT_ROOT = os.path.dirname(sys.argv[0])
+
+SCRIPT_ROOT = full_path("~") if sys.argv[0] == "prompt" else os.path.dirname(sys.argv[0])
 
 # list of file size units
 SIZE_SUFFIXES = ["bytes", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB"]
@@ -178,13 +176,18 @@ FILE_TYPES = {
               "app":       ("app", "exe", "nib", "pytheme", "pyui"),
               "archive":   ("bundle", "bz2", "cpgz", "dmg", "gz", "gzip", "rar", "tar", "tgz", "z", "zip"),
               "audio":     ("aac", "aif", "aiff", "caf", "m4a", "m4r", "mp3", "ogg", "wav"),
-              "code":      ("c", "command", "cpp", "css", "h", "hpp", "js", "json", "makefile", "pxd", "pxi", "py", "pyx", "sh", "src"),
+              "code":      ("c", "command", "cpp", "css", "h", "hpp", "js", "json", "makefile", "pxd",
+                            "pxi", "py", "pyx", "sh", "src"),
               "code_tags": ("htm", "html", "php", "plist", "xml"),
               "data":      ("bin", "cache", "dat", "db", "pkl", "pyc", "pyo"),
               "font":      ("fon", "otf", "ttc", "ttf"),
               "git":       ("git", "gitignore"),
               "image":     ("bmp", "gif", "icns", "itunesartwork", "jpg", "jpeg", "png", "svg"),
-              "text":      ("authors", "build", "cfg", "changelog", "changes", "clslog", "conf", "contribs", "contributors", "copyright", "copyrights", "csv", "doc", "docx", "dot", "dotx", "hgignore", "hgsubstate", "hgtags", "in", "ini", "install", "installation", "license", "md", "odf", "odp", "ods", "odt", "pages", "pdf", "pps", "ppsx", "ppt", "pptx", "readme", "rst", "rtf", "txt", "version", "xls", "xlsx", "xlt", "xltx", "yml"),
+              "text":      ("authors", "build", "cfg", "changelog", "changes", "clslog", "conf", "contribs", "contributors", "copyright", "copyrights", "csv", "doc", "docx", "dot", "dotx",
+                            "hgignore", "hgsubstate", "hgtags", "in", "ini", "install", "installation",
+                            "license", "md", "odf", "odp", "ods", "odt", "pages", "pdf", "pps", "ppsx",
+                            "ppt", "pptx", "readme", "rst", "rtf", "txt", "version", "xls", "xlsx", "xlt",
+                            "xltx", "yml"),
               "video":     ("avi", "m4v", "mov", "mp4"),
               }
 
@@ -427,10 +430,10 @@ class FileItem(object):
                     if thumb is not None:
                         cell.image_view.image = thumb
         
-        if self.icon is None:
-            self.icon = cell.image_view.image
-        else:
+        if self.icon:
             cell.image_view.image = self.icon
+        else:
+            self.icon = cell.image_view.image
         
         # add size to subtitle
         if not isinstance(self.stat, OSError):
@@ -765,12 +768,8 @@ def open_path(path):
 def toggle_edit_proxy(parent):
     # Returns a function that toggles edit mode for parent
     def _toggle_edit(sender):
-        if parent.editing:
-            sender.title = "Edit"
-            parent.set_editing(False)
-        else:
-            sender.title = "Done"
-            parent.set_editing(True)
+        sender.title = "Edit" if parent.editing else "Done"
+        parent.set_editing(not parent.editing)
     return _toggle_edit
 
 def close_proxy():
@@ -792,10 +791,8 @@ def make_file_list(fi=CWD_FILE_ITEM):
     lst.background_color = 1.0
     lst.data_source = ds
     lst.delegate = ds
-    if fi.path == "/":
-        lst.name = "/"
-    else:
-        lst.name = fi.basename()
+    
+    lst.name = "/" if fi.path == "/" else fi.basename()
     lst.right_button_items = ui.ButtonItem(title="Edit", action=toggle_edit_proxy(lst)),
     return lst
 
@@ -811,22 +808,16 @@ def make_stat_view(fi=CWD_FILE_ITEM):
     lst.background_color = 1.0
     lst.data_source = ds
     lst.delegate = ds
-    if fi.path == "/":
-        lst.name = "/"
-    else:
-        lst.name = fi.basename()
+    lst.name = "/" if fi.path == "/" else fi.basename()
     return lst
 
 def run(path="~"):
     # Run the main UI application
     global nav
     
-    if full_path(path) == "~":
-        lst = make_file_list(CWD_FILE_ITEM)
-    else:
-        lst = make_file_list(FileItem(path))
-    lst.left_button_items = ui.ButtonItem(image=ui.Image.named("ionicons-close-24"), action=close_proxy()),
-
+    lst = make_file_list(CWD_FILE_ITEM if full_path(path) == "~" else FileItem(path))
+    lst.left_button_items = ui.ButtonItem(image=ui.Image.named("ionicons-close-24"),
+                                          action=close_proxy()),
     nav = ui.NavigationView(lst)
     nav.navigation_bar_hidden = False
     nav.name = "FileNav"
@@ -848,7 +839,4 @@ def run(path="~"):
     """
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        run(str(sys.argv[1]))
-    else:
-        run("~")
+    run(sys.argv[1] if len(sys.argv) > 1 else "~")
