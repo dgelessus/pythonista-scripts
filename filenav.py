@@ -712,7 +712,7 @@ class StatDataSource(object):
                     if not os.path.exists(destdir):
                         os.mkdir(destdir)
                     destfile = full_path(os.path.join(destdir, self.fi.basename().lstrip(".")))
-                    shutil.copy(self.path, destfile)
+                    shutil.copy(self.fi.path, destfile)
                     editor.reload_files()
                     open_path(destfile)
                     nav.close()
@@ -722,7 +722,7 @@ class StatDataSource(object):
                     if not os.path.exists(destdir):
                         os.mkdir(destdir)
                     destfile = full_path(os.path.join(destdir, self.fi.basename().lstrip(".") + ".txt"))
-                    shutil.copy(self.path, destfile)
+                    shutil.copy(self.fi.path, destfile)
                     editor.reload_files()
                     open_path(destfile)
                     nav.close()
