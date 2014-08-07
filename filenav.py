@@ -27,10 +27,12 @@ import os.path   # to navigate the file structure
 import PIL.Image # for thumbnail creation
 import pwd       # to get names for UIDs
 import shutil    # to copy files
+import sound     # to play audio files
 import stat      # to analyze stat results
 import sys       # for sys.argv
 import time      # to sleep in certain situations and avoid hangs
 import ui        # duh
+import webbrowser# to open HTML files
 try:             # to save PIL images to string
     import cStringIO as StringIO
 except ImportError:
@@ -43,6 +45,10 @@ def full_path(path):
 def rel_to_docs(path):
     # Return path relative to script library (~/Documents)
     return os.path.relpath(full_path(path), os.path.expanduser("~/Documents"))
+
+def rel_to_app(path):
+    # Return path relative to app bundle (~/Pythonista.app)
+    return os.path.relpath(full_path(path), os.path.expanduser("~/Pythonista.app"))
 
 # get location of current script, fall back to ~ if necessary
 
@@ -489,14 +495,31 @@ class FileDataSource(object):
         # Called when the user moves a row with the reordering control (in editing mode).
         pass
     
+    @ui.in_background
     def tableview_did_select(self, tableview, section, row):
         # Called when the user selects a row
         if not tableview.editing:
+            fi = self.lists[section][row]
             if section == 0:
-                nav.push_view(make_file_list(self.lists[section][row]))
+                console.show_activity()
+                nav.push_view(make_file_list(fi))
+                console.hide_activity()
             elif section == 1:
-                open_path(self.lists[section][row].path)
-                nav.close()
+                if fi.nameparts[-1] in ("htm", "html"):
+                    webbrowser.open("file://" + fi.path)
+                    nav.close()
+                elif fi.filetype in ("code", "code_tags", "text"):
+                    open_path(fi.path)
+                    nav.close()
+                elif fi.filetype == "audio":
+                    spath = rel_to_app(fi.path.rsplit(".", 1)[0])
+                    sound.load_effect(spath)
+                    sound.play_effect(spath)
+                elif fi.filetype == "image":
+                    console.show_image(fi.path)
+                else:
+                    console.quicklook(fi.path)
+                    nav.close()
     
     def tableview_accessory_button_tapped(self, tableview, section, row):
         # Called when the user taps a row's accessory (i) button
@@ -567,6 +590,12 @@ class StatDataSource(object):
                              #("hexviewer-open", "Open in Hex Viewer", "hexviewer", "ionicons-pound-32"),
                              ("ios-openin", "Open In and Share", "External Apps", "ionicons-ios7-paperplane-32"),
                             ]
+            if self.fi.nameparts[-1] in ("htm", "html"):
+                self.actions[-1:-1] = [("webbrowser-open", "Open Website", "webbrowser", "ionicons-ios7-world-32")]
+            elif self.fi.filetype == "image":
+                self.actions[-1:-1] = [("console-printimg", "Show in Console", "console", "ionicons-image-32")]
+            elif self.fi.filetype == "audio":
+                self.actions[-1:-1] = [("sound-playsound", "Play Sound", "sound", "ionicons-ios7-play-32")]
         
             
     def tableview_number_of_sections(self, tableview):
@@ -656,6 +685,18 @@ class StatDataSource(object):
             shutil.copy(self.fi.path, destfile)
             editor.reload_files()
             open_path(destfile)
+            nav.close()
+        elif key == "console-printimg":
+            # Show in Console - console
+            console.show_image(self.fi.path)
+        elif key == "sound-playsound":
+            # Play Sound - sound
+            spath = rel_to_app(self.fi.path.rsplit(".", 1)[0])
+            sound.load_effect(spath)
+            sound.play_effect(spath)
+        elif key == "webbrowser-open":
+            # Open Website - webbrowser
+            webbrowser.open("file://" + self.fi.path)
             nav.close()
         elif key == "ios-openin":
             # Open In - External Apps
