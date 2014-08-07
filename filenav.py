@@ -231,8 +231,7 @@ FILE_ICONS = {
               }
 
 def get_thumbnail(path):
-    # attempt to generate a thumbnail
-    try:
+    def path_to_thumbnail(path):
         thumb = PIL.Image.open(path)
         thumb.thumbnail((32, 32), PIL.Image.ANTIALIAS)
         strio = StringIO.StringIO()
@@ -240,22 +239,18 @@ def get_thumbnail(path):
         data = strio.getvalue()
         strio.close()
         return ui.Image.from_data(data)
+
+    # attempt to generate a thumbnail
+    try:
+        return path_to_thumbnail(path)
     except IOError as err:
-        if err.message == "broken data stream when reading image file":
-            # load image using ui module first
-            with open(os.path.join(SCRIPT_ROOT, "temp/filenav-tmp.png"), "wb") as f:
-                f.write(ui.Image.named(path).to_png())
-            # need to close and reopen file, otherwise PIL fails to read the image
-            with open(os.path.join(SCRIPT_ROOT, "temp/filenav-tmp.png"), "rb") as f:
-                thumb = PIL.Image.open(f)
-                thumb.thumbnail((32, 32), PIL.Image.ANTIALIAS)
-                strio = StringIO.StringIO()
-                thumb.save(strio, thumb.format)
-            data = strio.getvalue()
-            strio.close()
-            return ui.Image.from_data(data)
-        return None
-        #print(err)
+        if not err.message == "broken data stream when reading image file":
+            return None
+        tmp_file = os.path.join(SCRIPT_ROOT, "temp/filenav-tmp.png")
+        # write image as png using ui module
+        with open(tmp_file, "wb") as f:
+            f.write(ui.Image.named(path).to_png())
+        return path_to_thumbnail(tmp_file)
 
 class FileItem(object):
     # object representation of a file and its properties
