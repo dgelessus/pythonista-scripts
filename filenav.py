@@ -23,10 +23,8 @@ import console   # for Quick Look and Open In
 import datetime  # to format timestamps from os.stat()
 import editor    # to open files
 import errno     # for OSError codes
-import os        # to navigate the file structure
-#import os.path   # ditto  # if you import os, you do not need to also import os.path
-import PIL       # for thumbnail creation
-import PIL.Image # ditto
+import os.path   # to navigate the file structure
+import PIL.Image # for thumbnail creation
 import pwd       # to get names for UIDs
 import shutil    # to copy files
 import stat      # to analyze stat results
@@ -218,13 +216,10 @@ FILE_ICONS = {
               "code_tags": ui.Image.named("ionicons-code-32"),
               "data":      ui.Image.named("ionicons-social-buffer-32"),
               "file":      ui.Image.named("ionicons-document-32"),
-              #"folder":    ui.Image.named("../Folder"),
               "folder":    ui.Image.named("ionicons-folder-32"),
               "font":      ui.Image.named("../fonts-selected"),
               "git":       ui.Image.named("ionicons-social-github-32"),
-              #"image":     ui.Image.named("../FileImage"),
               "image":     ui.Image.named("ionicons-image-32"),
-              #"text":      ui.Image.named("../FileOther"),
               "text":      ui.Image.named("ionicons-document-text-32"),
               "video":     ui.Image.named("ionicons-ios7-film-outline-32"),
               }
@@ -234,7 +229,6 @@ def get_thumbnail(path):
     try:
         thumb = PIL.Image.open(path)
         thumb.thumbnail((32, 32), PIL.Image.ANTIALIAS)
-        #print(path + str(thumb.format))
         strio = StringIO.StringIO()
         thumb.save(strio, thumb.format)
         data = strio.getvalue()
@@ -249,7 +243,6 @@ def get_thumbnail(path):
             with open(os.path.join(SCRIPT_ROOT, "temp/filenav-tmp.png"), "rb") as f:
                 thumb = PIL.Image.open(f)
                 thumb.thumbnail((32, 32), PIL.Image.ANTIALIAS)
-                #print(path + str(thumb.format))
                 strio = StringIO.StringIO()
                 thumb.save(strio, thumb.format)
             data = strio.getvalue()
@@ -296,7 +289,6 @@ class FileItem(object):
         self.icon = None
     
     def __del__(self):
-        #print("uncaching " + self.path)
         del self.path
         del self.rel_to_docs
         del self.location
@@ -384,7 +376,7 @@ class FileItem(object):
         cell = ui.TableViewCell("subtitle")
         cell.text_label.text = self.name
         
-        if self.isdir():
+        if self.basetype == 0:
             # is a folder
             cell.accessory_type = "detail_disclosure_button"
             cell.detail_text_label.text = "Folder"
@@ -516,146 +508,89 @@ class StatDataSource(object):
         # init
         self.fi = fi
         self.refresh()
-        self.lists = [self.actions, self.stats, self.flags]
-        self.list_details = [self.action_details, self.stat_details, self.flag_details]
-        self.list_imgs = [self.action_imgs, self.stat_imgs, self.flag_imgs]
-
+        self.lists = [
+                      ("Actions", self.actions),
+                      ("Stats", self.stats),
+                      ("Flags", self.flags),
+                      ]
+    
     def refresh(self):
         # Refresh stat data
-        self.actions = []
-        self.action_details = []
-        self.action_imgs = []
-        self.stats = []
-        self.stat_details = []
-        self.stat_imgs = []
-        self.flags = []
-        self.flag_details = []
-        self.flag_imgs = []
         stres = self.fi.stat
+        flint = stres.st_mode
+        
+        self.actions = []
+        self.stats = [
+                      ("stat-size", "Size", format_size(stres.st_size), "ionicons-code-working-32"),
+                      ("stat-ctime", "Created", format_utc(stres.st_ctime), "ionicons-document-32"),
+                      ("stat-atime", "Opened", format_utc(stres.st_atime), "ionicons-folder-32"),
+                      ("stat-mtime", "Modified", format_utc(stres.st_mtime), "ionicons-ios7-compose-32"),
+                      ("stat-uid", "Owner", "{udesc} ({uid}={uname})".format(uid=stres.st_uid, uname=pwd.getpwuid(stres.st_uid)[0], udesc=pwd.getpwuid(stres.st_uid)[4]), "ionicons-ios7-person-32"),
+                      ("stat-gid", "Owner Group", str(stres.st_gid), "ionicons-ios7-people-32"),
+                      ("stat-flags", "Flags", str(bin(stres.st_mode)), "ionicons-ios7-flag-32"),
+                      ]
+        self.flags = [
+                      ("flag-socket", "Is Socket", str(stat.S_ISSOCK(flint)), "ionicons-ios7-flag-32"),
+                      ("flag-link", "Is Symlink", str(stat.S_ISLNK(flint)), "ionicons-ios7-flag-32"),
+                      ("flag-reg", "Is File", str(stat.S_ISREG(flint)), "ionicons-ios7-flag-32"),
+                      ("flag-block", "Is Block Dev.", str(stat.S_ISBLK(flint)), "ionicons-ios7-flag-32"),
+                      ("flag-dir", "Is Directory", str(stat.S_ISDIR(flint)), "ionicons-ios7-flag-32"),
+                      ("flag-char", "Is Char Dev.", str(stat.S_ISCHR(flint)), "ionicons-ios7-flag-32"),
+                      ("flag-fifo", "Is FIFO", str(stat.S_ISFIFO(flint)), "ionicons-ios7-flag-32"),
+                      ("flag-suid", "Set UID Bit", str(check_bit(flint, stat.S_ISUID)), "ionicons-ios7-flag-32"),
+                      ("flag-sgid", "Set GID Bit", str(check_bit(flint, stat.S_ISGID)), "ionicons-ios7-flag-32"),
+                      ("flag-sticky", "Sticky Bit", str(check_bit(flint, stat.S_ISVTX)), "ionicons-ios7-flag-32"),
+                      ("flag-uread", "Owner Read", str(check_bit(flint, stat.S_IRUSR)), "ionicons-ios7-flag-32"),
+                      ("flag-uwrite", "Owner Write", str(check_bit(flint, stat.S_IWUSR)), "ionicons-ios7-flag-32"),
+                      ("flag-uexec", "Owner Exec", str(check_bit(flint, stat.S_IXUSR)), "ionicons-ios7-flag-32"),
+                      ("flag-gread", "Group Read", str(check_bit(flint, stat.S_IRGRP)), "ionicons-ios7-flag-32"),
+                      ("flag-gwrite", "Group Write", str(check_bit(flint, stat.S_IWGRP)), "ionicons-ios7-flag-32"),
+                      ("flag-gexec", "Group Exec", str(check_bit(flint, stat.S_IXGRP)), "ionicons-ios7-flag-32"),
+                      ("flag-oread", "Others Read", str(check_bit(flint, stat.S_IROTH)), "ionicons-ios7-flag-32"),
+                      ("flag-owrite", "Others Write", str(check_bit(flint, stat.S_IWOTH)), "ionicons-ios7-flag-32"),
+                      ("flag-oexec", "Others Exec", str(check_bit(flint, stat.S_IXOTH)), "ionicons-ios7-flag-32"),
+                      ]
         
         if self.fi.isdir():
             # actions for folders
-            self.actions.append("Go here")
-            self.action_details.append("Shellista")
-            self.action_imgs.append(ui.Image.named("ionicons-ios7-arrow-forward-32"))
+            self.actions += [
+                             ("shellista-cd", "Go here", "Shellista", "ionicons-ios7-arrow-forward-32"),
+                            ]
         elif self.fi.isfile():
             # actions for files
-            self.actions.append("Preview")
-            self.action_details.append("Quick Look")
-            self.action_imgs.append(ui.Image.named("ionicons-ios7-eye-32"))
-            self.actions.append("Open in Editor")
-            self.action_details.append("Pythonista")
-            self.action_imgs.append(ui.Image.named("ionicons-ios7-compose-32"))
-            self.actions.append("Copy & Open")
-            self.action_details.append("Pythonista")
-            self.action_imgs.append(ui.Image.named("ionicons-ios7-copy-32"))
-            self.actions.append("Copy & Open as Text")
-            self.action_details.append("Pythonista")
-            self.action_imgs.append(ui.Image.named("ionicons-document-text-32"))
-            # haven't yet been able to integrate hexviewer
-            #self.actions.append("Open in Hex Viewer")
-            #self.action_details.append("hexviewer")
-            #self.action_imgs.append(ui.Image.named("ionicons-pound-32"))
-            self.actions.append("Open in and Share")
-            self.action_details.append("External Apps")
-            self.action_imgs.append(ui.Image.named("ionicons-ios7-paperplane-32"))
+            self.actions += [
+                             ("ios-qlook", "Preview", "Quick Look", "ionicons-ios7-eye-32"),
+                             ("pysta-edit", "Open in Editor", "Pythonista", "ionicons-ios7-compose-32"),
+                             ("pysta-cpedit", "Copy & Open", "Pythonista", "ionicons-ios7-copy-32"),
+                             ("pysta-cptxt", "Copy & Open as Text", "Pythonista", "ionicons-document-text-32"),
+                             # haven't yet been able to integrate hexviewer
+                             #("hexviewer-open", "Open in Hex Viewer", "hexviewer", "ionicons-pound-32"),
+                             ("ios-openin", "Open In and Share", "External Apps", "ionicons-ios7-paperplane-32"),
+                            ]
         
-        # general statistics
-        self.stats.append("Size")
-        self.stat_details.append(format_size(stres.st_size))
-        self.stat_imgs.append(ui.Image.named("ionicons-code-working-32"))
-        self.stats.append("Created")
-        self.stat_details.append(str(datetime.datetime.utcfromtimestamp(stres.st_ctime)) + " UTC")
-        self.stat_imgs.append(ui.Image.named("ionicons-document-32"))
-        self.stats.append("Opened")
-        self.stat_details.append(str(datetime.datetime.utcfromtimestamp(stres.st_atime)) + " UTC")
-        self.stat_imgs.append(ui.Image.named("ionicons-folder-32"))
-        self.stats.append("Modified")
-        self.stat_details.append(str(datetime.datetime.utcfromtimestamp(stres.st_mtime)) + " UTC")
-        self.stat_imgs.append(ui.Image.named("ionicons-ios7-compose-32"))
-        self.stats.append("Owner")
-        self.stat_details.append("{udesc} ({uid}={uname})".format(uid=stres.st_uid, uname=pwd.getpwuid(stres.st_uid)[0], udesc=pwd.getpwuid(stres.st_uid)[4]))
-        self.stat_imgs.append(ui.Image.named("ionicons-ios7-person-32"))
-        self.stats.append("Owner Group")
-        self.stat_details.append(str(stres.st_gid))
-        self.stat_imgs.append(ui.Image.named("ionicons-ios7-people-32"))
-        self.stats.append("Flags")
-        self.stat_details.append(str(bin(stres.st_mode)))
-        self.stat_imgs.append(ui.Image.named("ionicons-ios7-flag-32"))
-        #self.stat_details += ["Detail"] * len(self.stats)
-        
-        flint = stres.st_mode
-        
-        self.flags.append("Is Socket")
-        self.flag_details.append(str(stat.S_ISSOCK(flint)))
-        self.flags.append("Is Symlink")
-        self.flag_details.append(str(stat.S_ISLNK(flint)))
-        self.flags.append("Is File")
-        self.flag_details.append(str(stat.S_ISREG(flint)))
-        self.flags.append("Is Block Dev.")
-        self.flag_details.append(str(stat.S_ISBLK(flint)))
-        self.flags.append("Is Directory")
-        self.flag_details.append(str(stat.S_ISDIR(flint)))
-        self.flags.append("Is Char Dev.")
-        self.flag_details.append(str(stat.S_ISCHR(flint)))
-        self.flags.append("Is FIFO")
-        self.flag_details.append(str(stat.S_ISFIFO(flint)))
-        self.flags.append("Set UID Bit")
-        self.flag_details.append(str(check_bit(flint, stat.S_ISUID)))
-        self.flags.append("Set GID Bit")
-        self.flag_details.append(str(check_bit(flint, stat.S_ISGID)))
-        self.flags.append("Sticky Bit")
-        self.flag_details.append(str(check_bit(flint, stat.S_ISVTX)))
-        self.flags.append("Owner Read")
-        self.flag_details.append(str(check_bit(flint, stat.S_IRUSR)))
-        self.flags.append("Owner Write")
-        self.flag_details.append(str(check_bit(flint, stat.S_IWUSR)))
-        self.flags.append("Owner Exec")
-        self.flag_details.append(str(check_bit(flint, stat.S_IXUSR)))
-        self.flags.append("Group Read")
-        self.flag_details.append(str(check_bit(flint, stat.S_IRGRP)))
-        self.flags.append("Group Write")
-        self.flag_details.append(str(check_bit(flint, stat.S_IWGRP)))
-        self.flags.append("Group Exec")
-        self.flag_details.append(str(check_bit(flint, stat.S_IXGRP)))
-        self.flags.append("Others Read")
-        self.flag_details.append(str(check_bit(flint, stat.S_IROTH)))
-        self.flags.append("Others Write")
-        self.flag_details.append(str(check_bit(flint, stat.S_IWOTH)))
-        self.flags.append("Others Exec")
-        self.flag_details.append(str(check_bit(flint, stat.S_IXOTH)))
-        #self.flag_details += ["Detail"] * len(self.flags)
-        self.flag_imgs += [ui.Image.named("ionicons-ios7-flag-32")] * len(self.flags)
-    
+            
     def tableview_number_of_sections(self, tableview):
         # Return the number of sections
         return len(self.lists)
 
     def tableview_number_of_rows(self, tableview, section):
         # Return the number of rows in the section
-        return len(self.lists[section])
+        return len(self.lists[section][1])
 
     def tableview_cell_for_row(self, tableview, section, row):
         # Create and return a cell for the given section/row
         if section == 0:
             cell = ui.TableViewCell("subtitle")
-            cell.image_view.image = self.list_imgs[section][row]
+            cell.image_view.image = ui.Image.named(self.lists[section][1][row][3])
         else:
             cell = ui.TableViewCell("value2")
-        cell.text_label.text = self.lists[section][row]
-        cell.detail_text_label.text = self.list_details[section][row]
+        cell.text_label.text = self.lists[section][1][row][1]
+        cell.detail_text_label.text = self.lists[section][1][row][2]
         return cell
 
     def tableview_title_for_header(self, tableview, section):
         # Return a title for the given section.
-        if section == 0:
-            return "Actions"
-        elif section == 1:
-            return "Statistics"
-        elif section == 2:
-            return "Flags"
-        else:
-            return "errsec"
+        return self.lists[section][0]
 
     def tableview_can_delete(self, tableview, section, row):
         # Return True if the user should be able to delete the given row.
@@ -676,62 +611,58 @@ class StatDataSource(object):
     @ui.in_background # necessary to avoid hangs with Shellista and console modules  
     def tableview_did_select(self, tableview, section, row):
         # Called when the user selects a row
-        if section == 0:
-            if self.fi.isdir():
-                # actions for folders
-                if row == 0:
-                    # Go Here in Shellista
-                    nav.close()
-                    print("Launching Shellista...")
-                    try:
-                        from Shellista import Shell
-                    except ImportError as err:
-                        print("Failed to import Shellista: " + err.message)
-                        print("See note on Shellista integration at the top of filenav.py.")
-                        print("> logout")
-                        return
-                    shell = Shell()
-                    shell.prompt = '> '
-                    shell.onecmd("cd " + self.fi.path)
-                    print("> cd " + self.fi.path)
-                    shell.cmdloop()
-            elif self.fi.isfile():
-                # actions for files
-                if row == 0:
-                    # Quick Look
-                    nav.close()
-                    time.sleep(1) # ui thread will hang otherwise
-                    console.quicklook(self.fi.path)
-                elif row == 1:
-                    # Open in Editor
-                    open_path(self.fi.path)
-                    nav.close()
-                elif row == 2:
-                    # Copy & Open
-                    destdir = full_path(os.path.join(SCRIPT_ROOT, "temp"))
-                    if not os.path.exists(destdir):
-                        os.mkdir(destdir)
-                    destfile = full_path(os.path.join(destdir, self.fi.basename().lstrip(".")))
-                    shutil.copy(self.fi.path, destfile)
-                    editor.reload_files()
-                    open_path(destfile)
-                    nav.close()
-                elif row == 3:
-                    # Copy & Open as Text
-                    destdir = full_path(os.path.join(SCRIPT_ROOT, "temp"))
-                    if not os.path.exists(destdir):
-                        os.mkdir(destdir)
-                    destfile = full_path(os.path.join(destdir, self.fi.basename().lstrip(".") + ".txt"))
-                    shutil.copy(self.fi.path, destfile)
-                    editor.reload_files()
-                    open_path(destfile)
-                    nav.close()
-                elif row == 4:
-                    # Open In
-                    if console.open_in(self.fi.path):
-                        nav.close()
-                    else:
-                        console.hud_alert("Failed to Open", "error")
+        key = self.lists[section][1][row][0]
+        if key == "shellista-cd":
+            # Go Here - Shellista
+            nav.close()
+            print("Launching Shellista...")
+            try:
+                from Shellista import Shell
+            except ImportError as err:
+                print("Failed to import Shellista: " + err.message)
+                print("See note on Shellista integration at the top of filenav.py.")
+                print("> logout")
+                return
+            shell = Shell()
+            shell.prompt = '> '
+            shell.onecmd("cd " + self.fi.path)
+            print("> cd " + self.fi.path)
+            shell.cmdloop()
+        elif key == "ios-qlook":
+            # Preview - Quick Look
+            nav.close()
+            time.sleep(1) # ui thread will hang otherwise
+            console.quicklook(self.fi.path)
+        elif key == "pysta-edit":
+            # Open in Editor - Pythonista
+            open_path(self.fi.path)
+            nav.close()
+        elif key == "pysta-cpedit":
+            # Copy & Open - Pythonista
+            destdir = full_path(os.path.join(SCRIPT_ROOT, "temp"))
+            if not os.path.exists(destdir):
+                os.mkdir(destdir)
+            destfile = full_path(os.path.join(destdir, self.fi.basename().lstrip(".")))
+            shutil.copy(self.fi.path, destfile)
+            editor.reload_files()
+            open_path(destfile)
+            nav.close()
+        elif key == "pysta-cptxt":
+            # Copy & Open as Text - Pythonista
+            destdir = full_path(os.path.join(SCRIPT_ROOT, "temp"))
+            if not os.path.exists(destdir):
+                os.mkdir(destdir)
+            destfile = full_path(os.path.join(destdir, self.fi.basename().lstrip(".") + ".txt"))
+            shutil.copy(self.fi.path, destfile)
+            editor.reload_files()
+            open_path(destfile)
+            nav.close()
+        elif key == "ios-openin":
+            # Open In - External Apps
+            if console.open_in(self.fi.path):
+                nav.close()
+            else:
+                console.hud_alert("Failed to Open", "error")
     
     def tableview_accessory_button_tapped(self, tableview, section, row):
         # Called when the user taps a row's accessory (i) button
@@ -755,6 +686,9 @@ def format_size(size, long=True):
         else:
             return "{size:01.1f} {suffix}".format(size=size, suffix=SIZE_SUFFIXES[i])
 
+def format_utc(timestamp):
+    return str(datetime.datetime.fromtimestamp(timestamp)) + " UTC"
+
 def open_path(path):
     # Open an absolute path in editor
     editor.open_file(os.path.relpath(path, os.path.expanduser("~/Documents")))
@@ -770,7 +704,6 @@ def close_proxy():
     # Returns a function that closes the main view
     def _close(sender):
         nav.close()
-        #wrap.close()
     return _close
 
 def make_file_list(fi=CWD_FILE_ITEM):
@@ -803,7 +736,7 @@ def make_stat_view(fi=CWD_FILE_ITEM):
     lst.name = "/" if fi.path == "/" else fi.basename()
     return lst
 
-def run(path="~"):
+def run(path="~", mode="popover"):
     # Run the main UI application
     global nav
     
@@ -812,23 +745,10 @@ def run(path="~"):
                                           action=close_proxy()),
     nav = ui.NavigationView(lst)
     nav.navigation_bar_hidden = False
-    nav.name = "FileNav"
     nav.flex = "WH"
-    nav.height = 1000
-    
-    nav.present("popover", hide_title_bar=True)
-    
-    # attempt to fix spontaneous crashes when quitting from panel or sidebar
-    # attempt failed, caused too many layout issues
-    """
-    nav.close()
-    global wrap
-    wrap = ui.View(name="FileNav", flex="WH")
-    wrap.add_subview(nav)
-    wrap.size_to_fit()
-    
-    #wrap.present("popover", hide_title_bar=True)
-    """
+    if mode == "popover":
+        nav.height = 1000
+    nav.present(mode, hide_title_bar=True)
 
 if __name__ == "__main__":
     run(sys.argv[1] if len(sys.argv) > 1 else "~")
