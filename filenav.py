@@ -708,7 +708,6 @@ def close_proxy():
 
 def make_file_list(fi=CWD_FILE_ITEM):
     # Create a ui.TableView containing a directory listing of path
-    ds = FileDataSource(fi)
     lst = ui.TableView(flex="WH")
     # allow multiple selection when editing, single selection otherwise
     lst.allows_selection = True
@@ -716,15 +715,13 @@ def make_file_list(fi=CWD_FILE_ITEM):
     lst.allows_selection_during_editing = True
     lst.allows_multiple_selection_during_editing = True
     lst.background_color = 1.0
-    lst.data_source = lst.delegate = ds
-    
+    lst.data_source = lst.delegate = FileDataSource(fi)
     lst.name = "/" if fi.path == "/" else fi.basename()
     lst.right_button_items = ui.ButtonItem(title="Edit", action=toggle_edit_proxy(lst)),
     return lst
 
 def make_stat_view(fi=CWD_FILE_ITEM):
     # Create a ui.TableView containing stat data on path
-    ds = StatDataSource(fi)
     lst = ui.TableView(flex="WH")
     # allow single selection only outside edit mode
     lst.allows_selection = True
@@ -732,7 +729,7 @@ def make_stat_view(fi=CWD_FILE_ITEM):
     lst.allows_selection_during_editing = False
     lst.allows_multiple_selection_during_editing = False
     lst.background_color = 1.0
-    lst.data_source = lst.delegate = ds
+    lst.data_source = lst.delegate = StatDataSource(fi)
     lst.name = "/" if fi.path == "/" else fi.basename()
     return lst
 
