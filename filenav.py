@@ -54,6 +54,9 @@ def rel_to_app(path):
 
 SCRIPT_ROOT = full_path("~") if sys.argv[0] == "prompt" else os.path.dirname(sys.argv[0])
 
+if not os.path.exists(os.path.join(SCRIPT_ROOT, "temp")):
+    os.mkdir(os.path.join(SCRIPT_ROOT, "temp"))
+
 # list of file size units
 SIZE_SUFFIXES = "bytes KiB MiB GiB TiB PiB EiB ZiB YiB".split()
 
