@@ -19,21 +19,22 @@
 # The plugins folder needs to be moved into PATH along with the main script.
 ###############################################################################
 
-import console   # for Quick Look and Open In
-import datetime  # to format timestamps from os.stat()
-import editor    # to open files
-import errno     # for OSError codes
-import os.path   # to navigate the file structure
-import PIL.Image # for thumbnail creation
-import pwd       # to get names for UIDs
-import shutil    # to copy files
-import sound     # to play audio files
-import stat      # to analyze stat results
-import sys       # for sys.argv
-import time      # to sleep in certain situations and avoid hangs
-import ui        # duh
-import webbrowser# to open HTML files
-try:             # to save PIL images to string
+import collections # for the namedtuple fileinfo
+import console     # for Quick Look and Open In
+import datetime    # to format timestamps from os.stat()
+import editor      # to open files
+import errno       # for OSError codes
+import os.path     # to navigate the file structure
+import Image       # for thumbnail creation
+import pwd         # to get names for UIDs
+import shutil      # to copy files
+import sound       # to play audio files
+import stat        # to analyze stat results
+import sys         # for sys.argv
+import time        # to sleep in certain situations and avoid hangs
+import ui          # duh
+import webbrowser  # to open HTML files
+try:               # to save PIL images to string
     import cStringIO as StringIO
 except ImportError:
     import StringIO
@@ -199,52 +200,65 @@ FILE_TYPES = {
               }
 FILE_TYPES = {k:tuple(v.split()) for k,v in FILE_TYPES.iteritems()}
 
-# dict of descriptions for all file type groups
-FILE_DESCS = {
-              "app":       "Application",
-              "archive":   "Archive",
-              "audio":     "Audio File",
-              "code":      "Source Code",
-              "code_tags": "Source Code",
-              "data":      "Data File",
-              "file":      "File",
-              "folder":    "Folder",
-              "font":      "Font File",
-              "git":       None,
-              "image":     "Image File",
-              "text":      "Plain Text File",
-              "video":     "Video File",
-              }
+# dict of descriptions and icons for all file type groups
+FILE_DESCS_ICONS = {
+    "app":       ("Application",     "../FileUI"),
+    "archive":   ("Archive",         "ionicons-filing-32"),
+    "audio":     ("Audio File",      "ionicons-ios7-musical-notes-32"),
+    "code":      ("Source Code",     "../FilePY"),
+    "code_tags": ("Source Code",     "ionicons-code-32"),
+    "data":      ("Data File",       "ionicons-social-buffer-32"),
+    "file":      ("File",            "ionicons-document-32"),
+    "folder":    ("Folder",          "ionicons-folder-32"),
+    "font":      ("Font File",       "../fonts-selected"),
+    "git":       ("None",            "ionicons-social-github-32"),
+    "image":     ("Image File",      "ionicons-image-32"),
+    "text":      ("Plain Text File", "ionicons-document-text-32"),
+    "video":     ("Video File",      "ionicons-ios7-film-outline-32"),
+                   }
+FILE_DESCS_ICONS = {k:(d,ui.Image.named(i)) for k,(d,i)
+                        in FILE_DESCS_ICONS.iteritems()}
 
-# dict of all file type icons
-FILE_ICONS = {
-              "app":       ui.Image.named("../FileUI"),
-              "archive":   ui.Image.named("ionicons-filing-32"),
-              "audio":     ui.Image.named("ionicons-ios7-musical-notes-32"),
-              "code":      ui.Image.named("../FilePY"),
-              "code_tags": ui.Image.named("ionicons-code-32"),
-              "data":      ui.Image.named("ionicons-social-buffer-32"),
-              "file":      ui.Image.named("ionicons-document-32"),
-              "folder":    ui.Image.named("ionicons-folder-32"),
-              "font":      ui.Image.named("../fonts-selected"),
-              "git":       ui.Image.named("ionicons-social-github-32"),
-              "image":     ui.Image.named("ionicons-image-32"),
-              "text":      ui.Image.named("ionicons-document-text-32"),
-              "video":     ui.Image.named("ionicons-ios7-film-outline-32"),
-              }
+fileinfo = collections.namedtuple('fileinfo',
+            'file_ext recognized_ext filetype filedesc icon')
+
+def get_filetype(file_ext):
+    for filetype, exts in FILE_TYPES.iteritems():
+        if file_ext in exts:
+            return filetype
+    return None
+
+def get_file_info(filename):
+    if not isinstance(filename, str):
+        return fileinfo('', '', '', '', None)
+    recognized_ext_and_type = ('', '')
+    for ext in os.path.basename(filename.lower()).split("."):
+        filetype = get_filetype(ext)
+        if filetype:
+            recognized_ext_and_type = (ext, filetype)
+    recognized_ext, filetype = recognized_ext_and_type
+    is_dir = os.path.isdir(filename)
+    if not filetype:
+        filetype = "folder" if is_dir else "file"
+    desc, icon = FILE_DESCS_ICONS.get(filetype, ("", None))
+    # apply special descriptions, icons only to certain folders
+    if is_dir and filetype not in ("app", "bundle", "git"):
+        desc, folder_icon = FILE_DESCS_ICONS["folder"]
+        if filetype != "archive":
+            icon = folder_icon
+    return fileinfo(ext, recognized_ext, filetype, desc, icon)
 
 def get_thumbnail(path):
     def path_to_thumbnail(path):
-        thumb = PIL.Image.open(path)
-        thumb.thumbnail((32, 32), PIL.Image.ANTIALIAS)
+        thumb = Image.open(path)
+        thumb.thumbnail((32, 32), Image.ANTIALIAS)
         strio = StringIO.StringIO()
         thumb.save(strio, thumb.format)
         data = strio.getvalue()
         strio.close()
         return ui.Image.from_data(data)
 
-    # attempt to generate a thumbnail
-    try:
+    try:  # attempt to generate a thumbnail
         return path_to_thumbnail(path)
     except IOError as err:
         if not err.message == "broken data stream when reading image file":
@@ -261,53 +275,44 @@ class FileItem(object):
         # init
         self.path = path
         self.refresh()
-    
+
     def refresh(self):
         # refresh all properties
         self.path = full_path(self.path)
+        self.fileinfo = get_file_info(self.path)
+        self.icon = self.fileinfo.icon
+        self.icon_cached = False
         self.rel_to_docs = rel_to_docs(self.path)
         self.location, self.name = os.path.split(self.path)
-        self.nameparts = self.name.rsplit(".")
         try:
             self.stat = os.stat(self.path)
         except OSError as err:
             self.stat = err
-        
+
         if os.path.isdir(self.path):
             self.basetype = 0
-            self.filetype = "folder"
             try:
                 self.contents = os.listdir(self.path)
             except OSError as err:
                 self.contents = err
         else:
             self.basetype = 1
-            self.filetype = "file"
             self.contents = []
-        
-        for part in self.nameparts:
-            for type in FILE_TYPES:
-                if part.lower() in FILE_TYPES[type]:
-                    self.filetype = type
-        
-        self.icon = None
-    
+
     def __del__(self):
         del self.path
+        del self.fileinfo
+        del self.icon
         del self.rel_to_docs
         del self.location
         del self.name
-        del self.nameparts
         del self.stat
-        del self.basetype
-        del self.filetype
         del self.contents
-        del self.icon
-    
+
     def __repr__(self):
         # repr(self) and str(self)
         return "filenav.FileItem(" + self.path + ")"
-    
+
     def __eq__(self, other):
         # self == other
         return os.path.samefile(self.path, other.path) if isinstance(other, FileItem) else False
@@ -315,47 +320,47 @@ class FileItem(object):
     def __ne__(self, other):
         # self != other
         return not os.path.samefile(self.path, other.path) if isinstance(other, FileItem) else False
-    
+
     def __len__(self):
         # len(self)
         return len(self.contents)
-    
+
     def __getitem__(self, key):
         # self[key]
         return self.contents[key]
-    
+
     def __iter__(self):
         # iter(self)
         return iter(self.contents)
-    
+
     def __reversed__(self):
         # reversed(self)
         return reversed(self.contents)
-    
+
     def __contains__(self, item):
         # item in self
         return item in self.contents
-    
+
     def isdir(self):
         # like os.path.isdir
         return self.basetype == 0
-    
+
     def isfile(self):
         # like os.path.isfile
         return self.basetype == 1
-    
+
     def basename(self):
         # like os.path.basename
         return self.name
-    
+
     def dirname(self):
         # like os.path.dirname
         return self.location
-    
+
     def join(self, *args):
         # like os.path.join
         return os.path.join(self.path, *args)
-    
+
     def listdir(self):
         # like os.listdir
         if self.isdir():
@@ -366,70 +371,30 @@ class FileItem(object):
             err.strerror = os.strerror(err.errno)
             err.filename = self.path
             raise err
-    
+
     def samefile(self, other):
         # like os.path.samefile
         return os.path.samefile(self.path, other)
-    
+
     def split(self):
         # like os.path.split
         return (self.location, self.name)
-    
+
     def as_cell(self):
         # Create a ui.TableViewCell for use with FileDataSource
         cell = ui.TableViewCell("subtitle")
         cell.text_label.text = self.name
-        
-        if self.basetype == 0:
-            # is a folder
-            cell.accessory_type = "detail_disclosure_button"
-            cell.detail_text_label.text = "Folder"
-            
-            # only apply certain descriptions to folders
-            if self.filetype in ("app", "bundle", "git"):
-                try:
-                    cell.detail_text_label.text = FILE_EXTS[self.nameparts[len(self.nameparts)-1].lower()]
-                except KeyError:
-                    try:
-                        cell.detail_text_label.text = FILE_DESCS[self.filetype]
-                    except KeyError:
-                        pass
-            
-            if not self.icon:
-                cell.image_view.image = FILE_ICONS["folder"]
-                # only apply certain icons to folders
-                if self.filetype in ("app", "archive", "bundle", "git"):
-                    cell.image_view.image = FILE_ICONS[self.filetype]
-            
-        else:
-            # is a file
-            cell.accessory_type = "detail_button"
-            cell.detail_text_label.text = "File"
-            
-            try:
-                cell.detail_text_label.text = FILE_EXTS[self.nameparts[len(self.nameparts)-1].lower()]
-            except KeyError:
-                try:
-                    cell.detail_text_label.text = FILE_DESCS[self.filetype]
-                except KeyError:
-                    pass
-            
-            if not self.icon:
-                cell.image_view.image = FILE_ICONS[self.filetype]
-                if self.filetype == "image":
-                    thumb = get_thumbnail(self.path)
-                    if thumb:
-                        cell.image_view.image = thumb
-        
-        if self.icon:
-            cell.image_view.image = self.icon
-        else:
-            self.icon = cell.image_view.image
-        
-        # add size to subtitle
-        if not isinstance(self.stat, OSError):
+        if not self.icon_cached and self.fileinfo.filetype == 'image':
+            thumb = get_thumbnail(self.path)
+            if thumb:  # just-in-time creation of thumbnails
+                self.icon = thumb
+                self.icon_cached = True
+        cell.image_view.image = self.icon
+        cell.detail_text_label.text = FILE_EXTS.get(self.fileinfo.file_ext,
+                                                    self.fileinfo.filedesc)
+        if not isinstance(self.stat, OSError):  # if available, add size to subtitle
             cell.detail_text_label.text += " (" + format_size(self.stat.st_size, False) + ")"
-        
+        cell.accessory_type = "detail_{}button".format("disclosure_" if self.isdir() else "")
         return cell
 
 CWD_FILE_ITEM = FileItem(os.getcwd())
@@ -450,7 +415,7 @@ class FileDataSource(object):
             if not isinstance(self.fi.contents[i], FileItem):
                 # if it isn't already, make entries FileItems rather than strings
                 self.fi.contents[i] = FileItem(self.fi.join(self.fi.contents[i]))
-            
+
             if self.fi.contents[i].isdir():
                 self.folders.append(self.fi.contents[i])
             else:
@@ -492,7 +457,7 @@ class FileDataSource(object):
     def tableview_move_row(self, tableview, from_section, from_row, to_section, to_row):
         # Called when the user moves a row with the reordering control (in editing mode).
         pass
-    
+
     @ui.in_background
     def tableview_did_select(self, tableview, section, row):
         # Called when the user selects a row
@@ -503,22 +468,23 @@ class FileDataSource(object):
                 nav.push_view(make_file_list(fi))
                 console.hide_activity()
             elif section == 1:
-                if fi.nameparts[-1] in ("htm", "html"):
+                filetype = fi.fileinfo.filetype
+                if fi.fileinfo.file_ext in ("htm", "html"):
                     webbrowser.open("file://" + fi.path)
                     nav.close()
-                elif fi.filetype in ("code", "code_tags", "text"):
+                elif filetype in ("code", "code_tags", "text"):
                     open_path(fi.path)
                     nav.close()
-                elif fi.filetype == "audio":
+                elif filetype == "audio":
                     spath = rel_to_app(fi.path.rsplit(".", 1)[0])
                     sound.load_effect(spath)
                     sound.play_effect(spath)
-                elif fi.filetype == "image":
+                elif filetype == "image":
                     console.show_image(fi.path)
                 else:
                     console.quicklook(fi.path)
                     nav.close()
-    
+
     def tableview_accessory_button_tapped(self, tableview, section, row):
         # Called when the user taps a row's accessory (i) button
         nav.push_view(make_stat_view(self.lists[section][row]))
@@ -529,73 +495,72 @@ class StatDataSource(object):
         # init
         self.fi = fi
         self.refresh()
-        self.lists = [
-                      ("Actions", self.actions),
-                      ("Stats", self.stats),
-                      ("Flags", self.flags),
-                      ]
-    
+        self.lists = [("Actions", self.actions), ("Stats", self.stats), ("Flags", self.flags)]
+
     def refresh(self):
         # Refresh stat data
         stres = self.fi.stat
         flint = stres.st_mode
-        
+
         self.actions = []
-        self.stats = [
-                      ("stat-size", "Size", format_size(stres.st_size), "ionicons-code-working-32"),
-                      ("stat-ctime", "Created", format_utc(stres.st_ctime), "ionicons-document-32"),
-                      ("stat-atime", "Opened", format_utc(stres.st_atime), "ionicons-folder-32"),
-                      ("stat-mtime", "Modified", format_utc(stres.st_mtime), "ionicons-ios7-compose-32"),
-                      ("stat-uid", "Owner", "{udesc} ({uid}={uname})".format(uid=stres.st_uid, uname=pwd.getpwuid(stres.st_uid)[0], udesc=pwd.getpwuid(stres.st_uid)[4]), "ionicons-ios7-person-32"),
-                      ("stat-gid", "Owner Group", str(stres.st_gid), "ionicons-ios7-people-32"),
-                      ("stat-flags", "Flags", str(bin(stres.st_mode)), "ionicons-ios7-flag-32"),
-                      ]
-        self.flags = [
-                      ("flag-socket", "Is Socket", str(stat.S_ISSOCK(flint)), "ionicons-ios7-flag-32"),
-                      ("flag-link", "Is Symlink", str(stat.S_ISLNK(flint)), "ionicons-ios7-flag-32"),
-                      ("flag-reg", "Is File", str(stat.S_ISREG(flint)), "ionicons-ios7-flag-32"),
-                      ("flag-block", "Is Block Dev.", str(stat.S_ISBLK(flint)), "ionicons-ios7-flag-32"),
-                      ("flag-dir", "Is Directory", str(stat.S_ISDIR(flint)), "ionicons-ios7-flag-32"),
-                      ("flag-char", "Is Char Dev.", str(stat.S_ISCHR(flint)), "ionicons-ios7-flag-32"),
-                      ("flag-fifo", "Is FIFO", str(stat.S_ISFIFO(flint)), "ionicons-ios7-flag-32"),
-                      ("flag-suid", "Set UID Bit", str(check_bit(flint, stat.S_ISUID)), "ionicons-ios7-flag-32"),
-                      ("flag-sgid", "Set GID Bit", str(check_bit(flint, stat.S_ISGID)), "ionicons-ios7-flag-32"),
-                      ("flag-sticky", "Sticky Bit", str(check_bit(flint, stat.S_ISVTX)), "ionicons-ios7-flag-32"),
-                      ("flag-uread", "Owner Read", str(check_bit(flint, stat.S_IRUSR)), "ionicons-ios7-flag-32"),
-                      ("flag-uwrite", "Owner Write", str(check_bit(flint, stat.S_IWUSR)), "ionicons-ios7-flag-32"),
-                      ("flag-uexec", "Owner Exec", str(check_bit(flint, stat.S_IXUSR)), "ionicons-ios7-flag-32"),
-                      ("flag-gread", "Group Read", str(check_bit(flint, stat.S_IRGRP)), "ionicons-ios7-flag-32"),
-                      ("flag-gwrite", "Group Write", str(check_bit(flint, stat.S_IWGRP)), "ionicons-ios7-flag-32"),
-                      ("flag-gexec", "Group Exec", str(check_bit(flint, stat.S_IXGRP)), "ionicons-ios7-flag-32"),
-                      ("flag-oread", "Others Read", str(check_bit(flint, stat.S_IROTH)), "ionicons-ios7-flag-32"),
-                      ("flag-owrite", "Others Write", str(check_bit(flint, stat.S_IWOTH)), "ionicons-ios7-flag-32"),
-                      ("flag-oexec", "Others Exec", str(check_bit(flint, stat.S_IXOTH)), "ionicons-ios7-flag-32"),
-                      ]
-        
+        self.stats = (
+            ("stat-size", "Size", format_size(stres.st_size), "ionicons-code-working-32"),
+            ("stat-ctime", "Created", format_utc(stres.st_ctime), "ionicons-document-32"),
+            ("stat-atime", "Opened", format_utc(stres.st_atime), "ionicons-folder-32"),
+            ("stat-mtime", "Modified", format_utc(stres.st_mtime), "ionicons-ios7-compose-32"),
+            ("stat-uid", "Owner", "{udesc} ({uid}={uname})".format(uid=stres.st_uid, uname=pwd.getpwuid(stres.st_uid)[0], udesc=pwd.getpwuid(stres.st_uid)[4]), "ionicons-ios7-person-32"),
+            ("stat-gid", "Owner Group", str(stres.st_gid), "ionicons-ios7-people-32"),
+            ("stat-flags", "Flags", str(bin(stres.st_mode)), "ionicons-ios7-flag-32"),
+                     )
+        self.flags = (
+            ("flag-socket", "Is Socket", str(stat.S_ISSOCK(flint)), "ionicons-ios7-flag-32"),
+            ("flag-link", "Is Symlink", str(stat.S_ISLNK(flint)), "ionicons-ios7-flag-32"),
+            ("flag-reg", "Is File", str(stat.S_ISREG(flint)), "ionicons-ios7-flag-32"),
+            ("flag-block", "Is Block Dev.", str(stat.S_ISBLK(flint)), "ionicons-ios7-flag-32"),
+            ("flag-dir", "Is Directory", str(stat.S_ISDIR(flint)), "ionicons-ios7-flag-32"),
+            ("flag-char", "Is Char Dev.", str(stat.S_ISCHR(flint)), "ionicons-ios7-flag-32"),
+            ("flag-fifo", "Is FIFO", str(stat.S_ISFIFO(flint)), "ionicons-ios7-flag-32"),
+            ("flag-suid", "Set UID Bit", str(check_bit(flint, stat.S_ISUID)), "ionicons-ios7-flag-32"),
+            ("flag-sgid", "Set GID Bit", str(check_bit(flint, stat.S_ISGID)), "ionicons-ios7-flag-32"),
+            ("flag-sticky", "Sticky Bit", str(check_bit(flint, stat.S_ISVTX)), "ionicons-ios7-flag-32"),
+            ("flag-uread", "Owner Read", str(check_bit(flint, stat.S_IRUSR)), "ionicons-ios7-flag-32"),
+            ("flag-uwrite", "Owner Write", str(check_bit(flint, stat.S_IWUSR)), "ionicons-ios7-flag-32"),
+            ("flag-uexec", "Owner Exec", str(check_bit(flint, stat.S_IXUSR)), "ionicons-ios7-flag-32"),
+            ("flag-gread", "Group Read", str(check_bit(flint, stat.S_IRGRP)), "ionicons-ios7-flag-32"),
+            ("flag-gwrite", "Group Write", str(check_bit(flint, stat.S_IWGRP)), "ionicons-ios7-flag-32"),
+            ("flag-gexec", "Group Exec", str(check_bit(flint, stat.S_IXGRP)), "ionicons-ios7-flag-32"),
+            ("flag-oread", "Others Read", str(check_bit(flint, stat.S_IROTH)), "ionicons-ios7-flag-32"),
+            ("flag-owrite", "Others Write", str(check_bit(flint, stat.S_IWOTH)), "ionicons-ios7-flag-32"),
+            ("flag-oexec", "Others Exec", str(check_bit(flint, stat.S_IXOTH)), "ionicons-ios7-flag-32"),
+                     )
+
         if self.fi.isdir():
             # actions for folders
             self.actions += [
-                             ("shellista-cd", "Go here", "Shellista", "ionicons-ios7-arrow-forward-32"),
+                ("shellista-cd", "Go here", "Shellista", "ionicons-ios7-arrow-forward-32"),
                             ]
         elif self.fi.isfile():
             # actions for files
             self.actions += [
-                             ("ios-qlook", "Preview", "Quick Look", "ionicons-ios7-eye-32"),
-                             ("pysta-edit", "Open in Editor", "Pythonista", "ionicons-ios7-compose-32"),
-                             ("pysta-cpedit", "Copy & Open", "Pythonista", "ionicons-ios7-copy-32"),
-                             ("pysta-cptxt", "Copy & Open as Text", "Pythonista", "ionicons-document-text-32"),
-                             # haven't yet been able to integrate hexviewer
-                             #("hexviewer-open", "Open in Hex Viewer", "hexviewer", "ionicons-pound-32"),
-                             ("ios-openin", "Open In and Share", "External Apps", "ionicons-ios7-paperplane-32"),
+                ("ios-qlook", "Preview", "Quick Look", "ionicons-ios7-eye-32"),
+                ("pysta-edit", "Open in Editor", "Pythonista", "ionicons-ios7-compose-32"),
+                ("pysta-cpedit", "Copy & Open", "Pythonista", "ionicons-ios7-copy-32"),
+                ("pysta-cptxt", "Copy & Open as Text", "Pythonista", "ionicons-document-text-32"),
+                # haven't yet been able to integrate hexviewer
+                #("hexviewer-open", "Open in Hex Viewer", "hexviewer", "ionicons-pound-32"),
+                ("ios-openin", "Open In and Share", "External Apps", "ionicons-ios7-paperplane-32"),
                             ]
-            if self.fi.nameparts[-1] in ("htm", "html"):
-                self.actions[-1:-1] = [("webbrowser-open", "Open Website", "webbrowser", "ionicons-ios7-world-32")]
-            elif self.fi.filetype == "image":
-                self.actions[-1:-1] = [("console-printimg", "Show in Console", "console", "ionicons-image-32")]
-            elif self.fi.filetype == "audio":
-                self.actions[-1:-1] = [("sound-playsound", "Play Sound", "sound", "ionicons-ios7-play-32")]
-        
-            
+            if self.fi.fileinfo.file_ext in ("htm", "html"):
+                self.actions[-1:-1] = [
+                    ("webbrowser-open", "Open Website", "webbrowser", "ionicons-ios7-world-32")]
+            elif self.fi.fileinfo.filetype == "image":
+                self.actions[-1:-1] = [
+                    ("console-printimg", "Show in Console", "console", "ionicons-image-32")]
+            elif self.fi.fileinfo.filetype == "audio":
+                self.actions[-1:-1] = [
+                    ("sound-playsound", "Play Sound", "sound", "ionicons-ios7-play-32")]
+
+
     def tableview_number_of_sections(self, tableview):
         # Return the number of sections
         return len(self.lists)
@@ -634,8 +599,8 @@ class StatDataSource(object):
     def tableview_move_row(self, tableview, from_section, from_row, to_section, to_row):
         # Called when the user moves a row with the reordering control (in editing mode).
         pass
-    
-    @ui.in_background # necessary to avoid hangs with Shellista and console modules  
+
+    @ui.in_background # necessary to avoid hangs with Shellista and console modules
     def tableview_did_select(self, tableview, section, row):
         # Called when the user selects a row
         key = self.lists[section][1][row][0]
@@ -702,7 +667,7 @@ class StatDataSource(object):
                 nav.close()
             else:
                 console.hud_alert("Failed to Open", "error")
-    
+
     def tableview_accessory_button_tapped(self, tableview, section, row):
         # Called when the user taps a row's accessory (i) button
         pass
@@ -775,7 +740,7 @@ def make_stat_view(fi=CWD_FILE_ITEM):
 def run(path="~", mode="popover"):
     # Run the main UI application
     global nav
-    
+
     lst = make_file_list(CWD_FILE_ITEM if full_path(path) == "~" else FileItem(path))
     lst.left_button_items = ui.ButtonItem(image=ui.Image.named("ionicons-close-24"),
                                           action=close_proxy()),
