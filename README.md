@@ -1,6 +1,9 @@
 # pythonista-scripts
 A collection of various Pythonista scripts by dgelessus.
 
+## BaseNSudoku
+A sudoku solver, originally written for a base 25 sudoku, but works with grids of any size. The number range can be adjusted freely, as well as the width and height of the number blocks to allow non-square blocks and grids. Technically it even works with uncertain (multiple solution) sudokus, however the result will then contain empty sets in place of unknown numbers.
+
 ## filenav
 A simple file navigator with support for accessing the entire directory structure, not just the Script Library. Additional features include automatic file icons depending on type, analysis of a few basic file attributes, and opening files directly in the default editor.
 
