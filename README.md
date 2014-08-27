@@ -13,5 +13,11 @@ Plugin for [ShellistaExt](http://github.com/briarfox/ShellistaExt) by [briarfox]
 ## KeyboardControl
 A proof-of-concept for using an external keyboard to control a UI script.
 
+## OHaiTerra
+A basic hello world script that I put up to use for code download testing.
+
 ## PackUI
 A means of distribution for .py and .pyui files without requiring any other scripts. The main script packages the two files into a new script, which will extract the files again when run.
+
+## Terra
+An extremely useful utility required by OHaiTerra.
