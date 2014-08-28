@@ -19,5 +19,8 @@ A basic hello world script that I put up to use for code download testing.
 ## PackUI
 A means of distribution for .py and .pyui files without requiring any other scripts. The main script packages the two files into a new script, which will extract the files again when run.
 
+## reload_all
+Reloads all user modules (i. e. those located in ~/Documents and subfolders) that are currently loaded. Due to Pythonista not being able to properly reset the Python environment, this includes all modules that have been imported since the last time the app was restarted, either manually or after being closed for being inactive for too long.
+
 ## Terra
 An extremely useful utility required by OHaiTerra.
