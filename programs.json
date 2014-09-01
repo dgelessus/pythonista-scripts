@@ -1,0 +1,18 @@
+{
+    "terra": {
+        "name": "Terra",
+        "authors": ["dgelessus"],
+        "description": "A dummy dependency to test the dependency installation system.",
+        "version": [1,0,0,0],
+        "dependencies": [],
+        "files": [["https://raw.githubusercontent.com/dgelessus/pythonista-scripts/master/terra.py", "site-packages", "terra.py"]]
+    },
+    "ohaiterra": {
+        "name": "Ohai, Terra!",
+        "authors": ["dgelessus"],
+        "description": "A Python implementation of the famous 'Hello World'.",
+        "version": [1,0,0,0],
+        "dependencies": [["terra", [1,0,0,0]]],
+        "files": [["https://raw.githubusercontent.com/dgelessus/pythonista-scripts/master/ohaiterra.py", "program-files", "ohaiterra.py"]]
+    }
+}
