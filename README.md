@@ -14,7 +14,7 @@ Plugin for [ShellistaExt](http://github.com/briarfox/ShellistaExt) by [briarfox]
 A proof-of-concept for using an external keyboard to control a UI script.
 
 ## importfinder
-Find out where an importable module is located. First tries to find the path "manually" without importing the module, but falls back to module.__file__ when necessary.
+Find out where an importable module is located. First tries to find the path "manually" without importing the module, but falls back to `module.__file__` when necessary.
 
 ## OHaiTerra
 A basic hello world script that I put up to use for code download testing.
