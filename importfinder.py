@@ -71,17 +71,12 @@ def find_path(name):
         mod = __import__(name)
     except ImportError:
         # Everything failed, assume nonexistant
-        return "<string>"
-    else:
-        if hasattr(mod, "__file__"):
-            return mod.__file__
-        else:
-            return "<built-in>"
-    
+        return "<string>" 
+    return mod.__file__ if hasattr(mod, "__file__") else "<built-in>"
 
-def main():
-    if len(sys.argv) > 1:
-        name = sys.argv[1]
+def main(args):
+    if args:
+        name = args[0]
     else:
         sel = editor.get_selection() or ""
         seltxt = preformat(editor.get_text()[sel[0]:sel[1]])
@@ -104,4 +99,4 @@ def main():
         editor.open_file(os.path.relpath(loc, DOCS))
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])
