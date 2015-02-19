@@ -10,11 +10,14 @@ A simple file navigator with support for accessing the entire directory structur
 ## filenav_plugin
 Plugin for [ShellistaExt](http://github.com/briarfox/ShellistaExt) by [briarfox](http://github.com/briarfox) that adds a filenav command, which opens filenav in either the given or current directory.
 
+## importfinder
+Find out where an importable module is located. First tries to find the path "manually" without importing the module, but falls back to `module.__file__` when necessary.
+
 ## KeyboardControl
 A proof-of-concept for using an external keyboard to control a UI script.
 
-## importfinder
-Find out where an importable module is located. First tries to find the path "manually" without importing the module, but falls back to `module.__file__` when necessary.
+## Multipanel
+A way to have multiple views presented in panel mode at once. Due to the builtin-ness of the ui module this cannot directly monkey-patch ui.View.present, views have to be added manually to the multipanel.
 
 ## OHaiTerra
 A basic hello world script that I put up to use for code download testing.
@@ -24,6 +27,9 @@ A means of distribution for .py and .pyui files without requiring any other scri
 
 ## reload_all
 Reloads all user modules (i. e. those located in ~/Documents and subfolders) that are currently loaded. Due to Pythonista not being able to properly reset the Python environment, this includes all modules that have been imported since the last time the app was restarted, either manually or after being closed for being inactive for too long.
+
+## rename
+A simple script for arbitrary file renaming and moving without Pythonista's default limitations.
 
 ## Terra
 An extremely useful utility required by OHaiTerra.
