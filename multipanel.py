@@ -66,7 +66,9 @@ class Multipanel(object):
             self.curview = self.views[self.tabs.selected_index]
         else:
             self.curview = self.placeholder
-        
+
+        self.tabs.segments = [view.name or '' for view in self.views ]
+
         self.root.add_subview(self.curview)
         self.curview.frame = (
             0,
@@ -146,4 +148,3 @@ if __name__ == "__main__":
         pass
     
     main()
-
