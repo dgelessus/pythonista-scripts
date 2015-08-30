@@ -1,5 +1,24 @@
 # -*- coding: utf-8 -*-
 ###############################################################################
+# THIS VERSION OF FILENAV IS OLD AND NO LONGER UPDATED!
+# THIS VERSION OF FILENAV IS OLD AND NO LONGER UPDATED!
+# THIS VERSION OF FILENAV IS OLD AND NO LONGER UPDATED!
+# Did I mention that THIS VERSION OF FILENAV IS OLD AND NO LONGER UPDATED?
+# For the current version of filenav, see the dedicated filenav repo:
+# https://github.com/dgelessus/filenav
+###############################################################################
+
+
+
+
+
+
+
+
+
+
+
+###############################################################################
 # filenav by dgelessus
 # http://github.com/dgelessus/pythonista-scripts/blob/master/filenav.py
 ###############################################################################
